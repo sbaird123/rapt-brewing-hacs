@@ -1,0 +1,105 @@
+start_brewing_session:
+  name: Start Brewing Session
+  description: Start a new brewing session
+  fields:
+    session_name:
+      name: Session Name
+      description: Name for the brewing session
+      required: true
+      selector:
+        text:
+    recipe:
+      name: Recipe
+      description: Recipe name or description
+      required: false
+      selector:
+        text:
+    original_gravity:
+      name: Original Gravity
+      description: Original gravity reading
+      required: false
+      selector:
+        number:
+          min: 1.000
+          max: 1.200
+          step: 0.001
+    target_gravity:
+      name: Target Final Gravity
+      description: Target final gravity
+      required: false
+      selector:
+        number:
+          min: 1.000
+          max: 1.200
+          step: 0.001
+    target_temperature:
+      name: Target Temperature
+      description: Target fermentation temperature (°C)
+      required: false
+      selector:
+        number:
+          min: 10
+          max: 30
+          step: 0.1
+          unit_of_measurement: "°C"
+
+stop_brewing_session:
+  name: Stop Brewing Session
+  description: Stop the current brewing session
+  fields:
+    session_id:
+      name: Session ID
+      description: ID of the session to stop
+      required: false
+      selector:
+        text:
+
+add_session_note:
+  name: Add Session Note
+  description: Add a note to the current brewing session
+  fields:
+    note:
+      name: Note
+      description: Note to add to the session
+      required: true
+      selector:
+        text:
+          multiline: true
+
+acknowledge_alert:
+  name: Acknowledge Alert
+  description: Acknowledge a brewing alert
+  fields:
+    alert_type:
+      name: Alert Type
+      description: Type of alert to acknowledge
+      required: true
+      selector:
+        select:
+          options:
+            - stuck_fermentation
+            - temperature_high
+            - temperature_low
+            - fermentation_complete
+            - low_battery
+
+export_session_data:
+  name: Export Session Data
+  description: Export brewing session data
+  fields:
+    session_id:
+      name: Session ID
+      description: ID of the session to export
+      required: false
+      selector:
+        text:
+    format:
+      name: Export Format
+      description: Format for export
+      required: true
+      default: "csv"
+      selector:
+        select:
+          options:
+            - csv
+            - json

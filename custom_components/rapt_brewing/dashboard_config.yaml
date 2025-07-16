@@ -1,0 +1,142 @@
+# RAPT Brewing Dashboard Configuration
+# Copy this configuration to your Home Assistant dashboard
+
+title: RAPT Brewing Dashboard
+icon: mdi:beer
+cards:
+  - type: vertical-stack
+    cards:
+      # Session Control Card
+      - type: entities
+        title: Session Control
+        entities:
+          - entity: sensor.rapt_brewing_session_name
+            name: Current Session
+          - entity: sensor.rapt_brewing_session_state
+            name: Session State
+          - entity: select.rapt_brewing_fermentation_stage
+            name: Fermentation Stage
+          - entity: button.rapt_brewing_start_session
+            name: Start Session
+          - entity: button.rapt_brewing_stop_session
+            name: Stop Session
+          - entity: button.rapt_brewing_pause_session
+            name: Pause Session
+          - entity: button.rapt_brewing_resume_session
+            name: Resume Session
+
+      # Current Readings Card
+      - type: entities
+        title: Current Readings
+        entities:
+          - entity: sensor.rapt_brewing_current_gravity
+            name: Current Gravity
+          - entity: sensor.rapt_brewing_current_temperature
+            name: Temperature
+          - entity: sensor.rapt_brewing_battery_level
+            name: Battery Level
+          - entity: sensor.rapt_brewing_signal_strength
+            name: Signal Strength
+          - entity: sensor.rapt_brewing_last_reading_time
+            name: Last Reading
+
+  - type: vertical-stack
+    cards:
+      # Brewing Progress Card
+      - type: entities
+        title: Brewing Progress
+        entities:
+          - entity: sensor.rapt_brewing_original_gravity
+            name: Original Gravity
+          - entity: sensor.rapt_brewing_target_gravity
+            name: Target Gravity
+          - entity: sensor.rapt_brewing_alcohol_percentage
+            name: Alcohol %
+          - entity: sensor.rapt_brewing_attenuation
+            name: Attenuation %
+          - entity: sensor.rapt_brewing_fermentation_rate
+            name: Fermentation Rate
+          - entity: sensor.rapt_brewing_session_duration
+            name: Session Duration
+
+      # Alerts Card
+      - type: entities
+        title: Alerts & Notifications
+        entities:
+          - entity: sensor.rapt_brewing_active_alerts
+            name: Active Alerts
+        show_header_toggle: false
+
+  - type: vertical-stack
+    cards:
+      # Gravity Chart
+      - type: history-graph
+        title: Gravity Over Time
+        entities:
+          - entity: sensor.rapt_brewing_current_gravity
+            name: Current Gravity
+          - entity: sensor.rapt_brewing_target_gravity
+            name: Target Gravity
+        hours_to_show: 168  # 7 days
+        refresh_interval: 300  # 5 minutes
+
+      # Temperature Chart
+      - type: history-graph
+        title: Temperature Over Time
+        entities:
+          - entity: sensor.rapt_brewing_current_temperature
+            name: Temperature
+          - entity: sensor.rapt_brewing_target_temperature
+            name: Target Temperature
+        hours_to_show: 168  # 7 days
+        refresh_interval: 300  # 5 minutes
+
+  - type: vertical-stack
+    cards:
+      # ABV and Attenuation Chart
+      - type: history-graph
+        title: ABV and Attenuation
+        entities:
+          - entity: sensor.rapt_brewing_alcohol_percentage
+            name: Alcohol %
+          - entity: sensor.rapt_brewing_attenuation
+            name: Attenuation %
+        hours_to_show: 168  # 7 days
+        refresh_interval: 300  # 5 minutes
+
+      # Fermentation Rate Chart
+      - type: history-graph
+        title: Fermentation Rate
+        entities:
+          - entity: sensor.rapt_brewing_fermentation_rate
+            name: Rate (SG/hr)
+        hours_to_show: 168  # 7 days
+        refresh_interval: 300  # 5 minutes
+
+  # Session Statistics Card
+  - type: statistics-graph
+    title: Session Statistics
+    entities:
+      - sensor.rapt_brewing_current_gravity
+      - sensor.rapt_brewing_current_temperature
+      - sensor.rapt_brewing_alcohol_percentage
+    stat_types:
+      - mean
+      - min
+      - max
+    period: day
+    days_to_show: 30
+
+  # Device Status Card
+  - type: entities
+    title: Device Status
+    entities:
+      - entity: sensor.rapt_brewing_battery_level
+        name: Battery Level
+        secondary_info: last-changed
+      - entity: sensor.rapt_brewing_signal_strength
+        name: Signal Strength
+        secondary_info: last-changed
+      - entity: sensor.rapt_brewing_total_sessions
+        name: Total Sessions
+    show_header_toggle: false

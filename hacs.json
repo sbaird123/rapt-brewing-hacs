@@ -1,0 +1,5 @@
+{
+  "name": "RAPT Brewing Session Manager",
+  "render_readme": true,
+  "domains": ["rapt_brewing"]
+}

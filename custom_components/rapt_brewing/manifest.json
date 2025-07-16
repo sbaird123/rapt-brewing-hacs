@@ -1,0 +1,12 @@
+{
+  "domain": "rapt_brewing",
+  "name": "RAPT Brewing Session Manager",
+  "version": "1.0.0",
+  "requirements": [
+    "rapt-ble>=0.1.2"
+  ],
+  "dependencies": [
+    "rapt_ble"
+  ],
+  "iot_class": "local_polling"
+}

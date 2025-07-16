@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "RAPT Brewing Session Manager",
+        "description": "Configure your RAPT Brewing session manager",
+        "data": {
+          "rapt_device_id": "RAPT Device ID"
+        }
+      }
+    },
+    "error": {
+      "invalid_device": "Invalid RAPT device ID or RAPT BLE integration not found"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "RAPT Brewing Options",
+        "description": "Configure your RAPT Brewing settings",
+        "data": {
+          "target_gravity": "Target Final Gravity",
+          "target_temperature": "Target Temperature (°C)",
+          "fermentation_alerts": "Enable Fermentation Alerts",
+          "temperature_alerts": "Enable Temperature Alerts"
+        }
+      }
+    }
+  }
+}
