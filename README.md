@@ -41,7 +41,7 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 2. Click on "Integrations"
 3. Click the three dots in the top right corner
 4. Select "Custom repositories"
-5. Add repository URL: `https://github.com/yourusername/rapt-brewing-hacs`
+5. Add repository URL: `https://github.com/sbaird123/rapt-brewing-hacs`
 6. Select category: "Integration"
 7. Click "Add"
 8. Find "RAPT Brewing Session Manager" in HACS and install
@@ -238,13 +238,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-[releases-shield]: https://img.shields.io/github/release/yourusername/rapt-brewing-hass.svg?style=for-the-badge
-[releases]: https://github.com/yourusername/rapt-brewing-hass/releases
-[commits-shield]: https://img.shields.io/github/commit-activity/y/yourusername/rapt-brewing-hass.svg?style=for-the-badge
-[commits]: https://github.com/yourusername/rapt-brewing-hass/commits/main
-[license-shield]: https://img.shields.io/github/license/yourusername/rapt-brewing-hass.svg?style=for-the-badge
+[releases-shield]: https://img.shields.io/github/release/sbaird123/rapt-brewing-hacs.svg?style=for-the-badge
+[releases]: https://github.com/sbaird123/rapt-brewing-hacs/releases
+[commits-shield]: https://img.shields.io/github/commit-activity/y/sbaird123/rapt-brewing-hacs.svg?style=for-the-badge
+[commits]: https://github.com/sbaird123/rapt-brewing-hacs/commits/main
+[license-shield]: https://img.shields.io/github/license/sbaird123/rapt-brewing-hacs.svg?style=for-the-badge
 [hacs]: https://github.com/hacs/integration
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
-[issues]: https://github.com/yourusername/rapt-brewing-hass/issues
-[discussions]: https://github.com/yourusername/rapt-brewing-hass/discussions
+[issues]: https://github.com/sbaird123/rapt-brewing-hacs/issues
+[discussions]: https://github.com/sbaird123/rapt-brewing-hacs/discussions
 [community]: https://community.home-assistant.io/
