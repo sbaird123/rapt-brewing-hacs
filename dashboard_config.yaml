@@ -6,7 +6,7 @@
 # ==========================================
 type: vertical-stack
 cards:
-  # Top Row - 2 columns
+  # Top Row - 4 columns full width
   - type: horizontal-stack
     cards:
       - type: entities
@@ -35,10 +35,6 @@ cards:
           - entity: sensor.rapt_brewing_session_manager_last_reading_time
             name: Last Reading
         show_header_toggle: false
-
-  # Second Row - 2 columns
-  - type: horizontal-stack
-    cards:
       - type: entities
         title: Brewing Targets
         entities:
