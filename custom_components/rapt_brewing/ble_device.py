@@ -131,7 +131,26 @@ class RAPTPillBLEParser:
             accel_y_raw = unpacked[8]
             
             # Convert raw values to meaningful units
-            gravity = gravity_raw / 1000.0 if gravity_raw != 0 else None
+            # Try different gravity scaling factors
+            if gravity_raw != 0:
+                # Try various common scaling factors used by RAPT
+                gravity_scaled = gravity_raw / 1000.0
+                if gravity_scaled < 0.5 or gravity_scaled > 2.0:
+                    # Try without scaling first
+                    if 0.5 <= gravity_raw <= 2.0:
+                        gravity = gravity_raw
+                    # Try different divisors
+                    elif 500 <= gravity_raw <= 2000:
+                        gravity = gravity_raw / 1000.0
+                    elif 50000 <= gravity_raw <= 200000:
+                        gravity = gravity_raw / 100000.0
+                    else:
+                        _LOGGER.debug("Gravity raw value %d doesn't fit expected patterns", gravity_raw)
+                        gravity = None
+                else:
+                    gravity = gravity_scaled
+            else:
+                gravity = None
             battery = int(battery_raw) if battery_raw >= 0 else None
             accel_x = accel_x_raw / 16.0
             accel_y = accel_y_raw / 16.0
