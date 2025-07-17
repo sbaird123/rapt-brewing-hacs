@@ -72,6 +72,10 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Handle button press."""
+        _LOGGER.warning("RAPT BUTTON PRESSED: %s", self.entity_description.key)
+        _LOGGER.warning("RAPT BUTTON Current session: %s", 
+                       self.coordinator.data.current_session.name if self.coordinator.data.current_session else "None")
+        
         if self.entity_description.key == "start_session":
             await self._start_session()
         elif self.entity_description.key == "stop_session":
@@ -83,9 +87,14 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
 
     async def _start_session(self) -> None:
         """Start a new brewing session."""
+        if self.coordinator.data.current_session:
+            _LOGGER.warning("RAPT BUTTON: Cannot start session, current session exists: %s", 
+                           self.coordinator.data.current_session.name)
+            return
+            
         # This would typically open a dialog or form
         # For now, we'll create a default session
-        await self.coordinator.start_session(
+        session_id = await self.coordinator.start_session(
             name=f"Brewing Session {len(self.coordinator.data.sessions) + 1}",
             recipe=None,
             original_gravity=None,
@@ -93,14 +102,21 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             target_temperature=None,
         )
         
+        _LOGGER.warning("RAPT BUTTON: Started new session: %s", session_id)
+        
         # Refresh coordinator data
         await self.coordinator.async_request_refresh()
 
     async def _stop_session(self) -> None:
         """Stop the current brewing session."""
         if self.coordinator.data.current_session:
-            await self.coordinator.stop_session(self.coordinator.data.current_session.id)
+            session_id = self.coordinator.data.current_session.id
+            session_name = self.coordinator.data.current_session.name
+            await self.coordinator.stop_session(session_id)
+            _LOGGER.warning("RAPT BUTTON: Stopped session: %s (%s)", session_name, session_id)
             await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.warning("RAPT BUTTON: Cannot stop session, no current session")
 
     async def _pause_session(self) -> None:
         """Pause the current brewing session."""
@@ -119,8 +135,5 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        if self.entity_description.key == "start_session":
-            return self.coordinator.data.current_session is None
-        elif self.entity_description.key in ("stop_session", "pause_session", "resume_session"):
-            return self.coordinator.data.current_session is not None
+        # Always keep buttons available but check states in press method
         return True
