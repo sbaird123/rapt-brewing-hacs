@@ -6,7 +6,7 @@
 # ==========================================
 type: vertical-stack
 cards:
-  # Top Row - 4 columns full width
+  # Top Row - 3 columns for better readability
   - type: horizontal-stack
     cards:
       - type: entities
@@ -36,7 +36,7 @@ cards:
             name: Last Reading
         show_header_toggle: false
       - type: entities
-        title: Brewing Targets
+        title: Brewing Targets & Progress
         entities:
           - entity: sensor.rapt_brewing_session_manager_original_gravity
             name: Original Gravity
@@ -44,10 +44,6 @@ cards:
             name: Target Gravity
           - entity: number.rapt_brewing_session_manager_target_temperature
             name: Target Temperature
-        show_header_toggle: false
-      - type: entities
-        title: Fermentation Progress
-        entities:
           - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
             name: Alcohol %
           - entity: sensor.rapt_brewing_session_manager_attenuation
