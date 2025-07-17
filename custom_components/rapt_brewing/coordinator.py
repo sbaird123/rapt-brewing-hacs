@@ -159,6 +159,20 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         # Update current values
         if ble_data.gravity is not None:
             session.current_gravity = ble_data.gravity
+            
+            # Auto-set original gravity if not set and this is the first gravity reading
+            if session.original_gravity is None and len(session.data_points) <= 1:
+                session.original_gravity = ble_data.gravity
+                _LOGGER.warning("RAPT AUTO-SET: Original gravity set to %.3f for session: %s", 
+                               ble_data.gravity, session.name)
+                
+                # Also set a reasonable default target gravity if not set
+                # Typical beer fermentation: OG - 0.020 to 0.030 points
+                if session.target_gravity is None:
+                    session.target_gravity = max(0.990, ble_data.gravity - 0.025)
+                    _LOGGER.warning("RAPT AUTO-SET: Target gravity set to %.3f for session: %s", 
+                                   session.target_gravity, session.name)
+                
         if ble_data.temperature is not None:
             session.current_temperature = ble_data.temperature
             

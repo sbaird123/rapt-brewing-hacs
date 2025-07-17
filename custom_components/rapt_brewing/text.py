@@ -23,11 +23,6 @@ TEXT_TYPES: tuple[TextEntityDescription, ...] = (
         name="Session Name",
         icon="mdi:text-box",
     ),
-    TextEntityDescription(
-        key="recipe_name",
-        name="Recipe Name",
-        icon="mdi:book-open",
-    ),
 )
 
 
@@ -71,20 +66,12 @@ class RAPTBrewingText(RAPTBrewingEntity, TextEntity):
                 if self.coordinator.data.current_session
                 else None
             )
-        elif self.entity_description.key == "recipe_name":
-            return (
-                self.coordinator.data.current_session.recipe
-                if self.coordinator.data.current_session
-                else None
-            )
         return None
 
     async def async_set_value(self, value: str) -> None:
         """Set the text value."""
         if self.entity_description.key == "session_name":
             await self._set_session_name(value)
-        elif self.entity_description.key == "recipe_name":
-            await self._set_recipe_name(value)
 
     async def _set_session_name(self, name: str) -> None:
         """Set session name."""
@@ -93,14 +80,6 @@ class RAPTBrewingText(RAPTBrewingEntity, TextEntity):
             await self.coordinator._save_data()
             await self.coordinator.async_request_refresh()
             _LOGGER.warning("RAPT TEXT: Updated session name to: %s", name.strip())
-
-    async def _set_recipe_name(self, recipe: str) -> None:
-        """Set recipe name."""
-        if self.coordinator.data.current_session:
-            self.coordinator.data.current_session.recipe = recipe.strip() or None
-            await self.coordinator._save_data()
-            await self.coordinator.async_request_refresh()
-            _LOGGER.warning("RAPT TEXT: Updated recipe name to: %s", recipe.strip())
 
     @property
     def available(self) -> bool:

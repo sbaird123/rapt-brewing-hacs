@@ -10,10 +10,10 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 ## Features
 
 ### 🍺 Complete Brewing Session Management
-- **Session Control**: Start, stop, pause, and resume brewing sessions
+- **Session Control**: Start, stop, delete, and rename brewing sessions
 - **Multi-Session Support**: Track multiple brewing sessions with historical data
-- **Stage Management**: Progress through fermentation stages (primary → secondary → conditioning → packaging)
-- **Recipe Integration**: Track recipe names and brewing parameters
+- **Auto-Detection**: Automatically sets original gravity from first reading
+- **Target Setting**: Set target gravity and temperature for calculations
 
 ### 📊 Advanced Brewing Calculations
 - **Automatic ABV**: Real-time alcohol percentage calculation using `(OG - FG) × 131.25`
@@ -28,7 +28,7 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 - **Device Alerts**: Low battery and connectivity warnings
 
 ### 📈 Rich Data Monitoring
-- **16 Comprehensive Sensors**: Complete brewing data coverage
+- **13 Comprehensive Sensors**: Complete brewing data coverage
 - **Real-time Updates**: Live gravity, temperature, and device status
 - **Historical Analysis**: Long-term data storage and trend analysis
 - **Dashboard Ready**: Complete Lovelace configuration included
@@ -59,6 +59,7 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 - Home Assistant version 2023.9.0 or later
 - Bluetooth integration enabled in Home Assistant
 - RAPT Pill hydrometer device
+- ESPHome BLE proxy devices (recommended for better range and reliability)
 
 ### Setup Steps
 1. **Enable Bluetooth** in Home Assistant (if not already enabled)
@@ -77,11 +78,11 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 ## Usage
 
 ### Starting Your First Session
-1. Use the "Start Brewing Session" button or service
-2. Provide session details:
-   - **Session Name**: e.g., "IPA Batch #1"
-   - **Recipe** (optional): Recipe name or description
-   - **Original Gravity**: Starting gravity reading
+1. Use the "Start Brewing Session" button
+2. Session automatically created with timestamp name (e.g., "Brew 2025-01-17 18:30")
+3. Customize session name using the Session Name text input
+4. Set brewing parameters using number inputs:
+   - **Original Gravity**: Starting gravity (auto-detected from first reading)
    - **Target Gravity**: Expected final gravity
    - **Target Temperature**: Ideal fermentation temperature
 
@@ -89,13 +90,13 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 - **Real-time Readings**: Current gravity, temperature, battery level
 - **Calculated Metrics**: ABV%, attenuation%, fermentation rate
 - **Historical Charts**: Gravity and temperature trends over time
-- **Stage Management**: Update fermentation stage as brewing progresses
+- **Alert System**: Automatic alerts for stuck fermentation, temperature issues, and low battery
 
 ### Managing Sessions
-- **Session Control**: Start, stop, pause, resume operations
+- **Session Control**: Start, stop, delete operations
 - **Multi-Session**: Switch between active sessions
-- **Notes**: Add brewing notes throughout the process
-- **Export**: Download session data for analysis
+- **Session Naming**: Customize session names during brewing
+- **Target Setting**: Set original gravity, target gravity, and target temperature
 
 ## Dashboard Configuration
 
@@ -108,10 +109,11 @@ cards:
   - type: entities
     title: Session Control
     entities:
-      - sensor.rapt_brewing_session_name
+      - text.rapt_brewing_session_name
       - sensor.rapt_brewing_session_state
       - button.rapt_brewing_start_session
       - button.rapt_brewing_stop_session
+      - button.rapt_brewing_delete_session
   # ... more configuration available in dashboard_config.yaml
 ```
 
@@ -120,7 +122,7 @@ cards:
 | Sensor | Description | Unit |
 |--------|-------------|------|
 | `session_name` | Current session name | - |
-| `session_state` | Session state (active/paused/completed) | - |
+| `session_state` | Session state (active/idle/completed) | - |
 | `current_gravity` | Current specific gravity | SG |
 | `alcohol_percentage` | Calculated alcohol by volume | % |
 | `attenuation` | Apparent attenuation | % |
@@ -129,42 +131,30 @@ cards:
 | `battery_level` | RAPT Pill battery level | % |
 | `session_duration` | Total session time | hours |
 | `active_alerts` | Number of active alerts | count |
+| `target_gravity` | Target final gravity | SG |
+| `target_temperature` | Target fermentation temperature | °C |
+| `signal_strength` | BLE signal strength | dBm |
+| `last_reading_time` | Last sensor reading timestamp | timestamp |
+| `total_sessions` | Total number of sessions | count |
 
-## Available Services
+## Available Controls
 
-### `rapt_brewing.start_brewing_session`
-Start a new brewing session with specified parameters.
+### Buttons
+- **Start Brewing Session**: Creates a new session with timestamp name
+- **Stop Brewing Session**: Completes the current session
+- **Delete Current Session**: Removes the current session
+- **Clear Alerts**: Acknowledges and clears active alerts
 
-```yaml
-service: rapt_brewing.start_brewing_session
-data:
-  session_name: "IPA Batch #1"
-  recipe: "Cascade Single Hop IPA"
-  original_gravity: 1.050
-  target_gravity: 1.010
-  target_temperature: 18.0
-```
+### Text Inputs
+- **Session Name**: Edit the current session name
 
-### `rapt_brewing.stop_brewing_session`
-Stop the current brewing session.
+### Number Inputs
+- **Original Gravity**: Set starting gravity (1.000-1.200 SG)
+- **Target Gravity**: Set target final gravity (0.990-1.200 SG)
+- **Target Temperature**: Set fermentation temperature (0-50°C)
 
-### `rapt_brewing.add_session_note`
-Add a note to the current session.
-
-```yaml
-service: rapt_brewing.add_session_note
-data:
-  note: "Added dry hops - 50g Cascade"
-```
-
-### `rapt_brewing.export_session_data`
-Export session data for analysis.
-
-```yaml
-service: rapt_brewing.export_session_data
-data:
-  format: "csv"  # or "json"
-```
+### Selects
+- **Active Session**: Switch between active brewing sessions
 
 ## Alerts & Notifications
 
@@ -191,14 +181,14 @@ notify:
 ### Common Issues
 
 **Integration won't load**
-- Verify RAPT BLE integration is installed and working
-- Check that device ID is correct
+- Verify Bluetooth is enabled on your Home Assistant server
+- Check that your RAPT Pill is broadcasting (manufacturer IDs 16722 or 17739)
 - Review Home Assistant logs for errors
 
 **No data updates**
 - Ensure RAPT Pill is connected and transmitting
-- Check Bluetooth connectivity and range
-- Verify BLE integration is receiving data
+- Check Bluetooth connectivity and range (ESPHome BLE proxies recommended)
+- Verify integration is receiving BLE advertisements in logs
 
 **Incorrect calculations**
 - Confirm original gravity is set correctly

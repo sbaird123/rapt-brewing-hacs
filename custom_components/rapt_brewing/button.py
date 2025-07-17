@@ -29,16 +29,6 @@ BUTTON_TYPES: tuple[ButtonEntityDescription, ...] = (
         icon="mdi:stop-circle",
     ),
     ButtonEntityDescription(
-        key="pause_session",
-        name="Pause Brewing Session",
-        icon="mdi:pause-circle",
-    ),
-    ButtonEntityDescription(
-        key="resume_session",
-        name="Resume Brewing Session",
-        icon="mdi:play-circle",
-    ),
-    ButtonEntityDescription(
         key="delete_session",
         name="Delete Current Session",
         icon="mdi:delete-circle",
@@ -90,10 +80,6 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             await self._start_session()
         elif self.entity_description.key == "stop_session":
             await self._stop_session()
-        elif self.entity_description.key == "pause_session":
-            await self._pause_session()
-        elif self.entity_description.key == "resume_session":
-            await self._resume_session()
         elif self.entity_description.key == "delete_session":
             await self._delete_session()
         elif self.entity_description.key == "clear_alerts":
@@ -140,20 +126,6 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
         else:
             _LOGGER.warning("RAPT BUTTON: Cannot stop session, no current session")
 
-    async def _pause_session(self) -> None:
-        """Pause the current brewing session."""
-        if self.coordinator.data.current_session:
-            self.coordinator.data.current_session.state = "paused"
-            await self.coordinator._save_data()
-            await self.coordinator.async_request_refresh()
-
-    async def _resume_session(self) -> None:
-        """Resume the current brewing session."""
-        if self.coordinator.data.current_session:
-            self.coordinator.data.current_session.state = "active"
-            await self.coordinator._save_data()
-            await self.coordinator.async_request_refresh()
-    
     async def _delete_session(self) -> None:
         """Delete the current brewing session."""
         if self.coordinator.data.current_session:
