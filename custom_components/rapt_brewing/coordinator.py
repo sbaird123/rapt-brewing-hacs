@@ -290,15 +290,18 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                            alert_type, message, session.name)
             
             # Send Home Assistant notification
-            await self.hass.services.async_call(
-                "notify",
-                "persistent_notification",
-                {
-                    "message": message,
-                    "title": f"RAPT Brewing Alert - {session.name}",
-                    "notification_id": f"rapt_brewing_{alert_type}_{session.id}",
-                },
-            )
+            try:
+                await self.hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "message": message,
+                        "title": f"RAPT Brewing Alert - {session.name}",
+                        "notification_id": f"rapt_brewing_{alert_type}_{session.id}",
+                    },
+                )
+            except Exception as e:
+                _LOGGER.warning("RAPT ALERT: Failed to send notification: %s", e)
             
             _LOGGER.warning("RAPT ALERT NOTIFICATION SENT: %s", message)
         else:
