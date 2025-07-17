@@ -64,19 +64,6 @@ class RAPTPillBLEParser:
         """Parse BLE advertisement data."""
         manufacturer_data = service_info.manufacturer_data
         
-        # Check for manufacturer ID 3 (user's specific device pattern)
-        if 3 in manufacturer_data:
-            data = manufacturer_data[3]
-            if len(data) >= 3 and list(data[:3]) == [0x01, 0x13, 0x61]:
-                _LOGGER.debug("Found manufacturer ID 3 RAPT device data")
-                # For now, return basic sensor data since we need to understand the format
-                # This will at least show the device is connected
-                return RAPTPillSensorData(
-                    temperature=20.0,  # Placeholder
-                    gravity=1.020,     # Placeholder  
-                    battery=80,        # Placeholder
-                    signal_strength=service_info.rssi
-                )
         
         # Check for RAPT manufacturer data
         if RAPT_MANUFACTURER_ID in manufacturer_data:
@@ -197,10 +184,7 @@ class RAPTPillBluetoothDeviceData(PassiveBluetoothDataProcessor):
         manufacturer_data = service_info.manufacturer_data
         is_rapt_device = (
             RAPT_MANUFACTURER_ID in manufacturer_data or
-            KEGLAND_MANUFACTURER_ID in manufacturer_data or
-            # Also check for manufacturer ID 3 (seen in user's device)
-            (3 in manufacturer_data and len(manufacturer_data[3]) >= 3 and 
-             list(manufacturer_data[3][:3]) == [0x01, 0x13, 0x61])
+            KEGLAND_MANUFACTURER_ID in manufacturer_data
         )
         
         if not is_rapt_device:

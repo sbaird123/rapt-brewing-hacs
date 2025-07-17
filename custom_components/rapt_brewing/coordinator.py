@@ -69,7 +69,11 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             hass, f"RAPT Pill {self._rapt_device_id}"
         )
         self.ble_coordinator = PassiveBluetoothProcessorCoordinator(
-            hass, _LOGGER, self._rapt_device_id, self.ble_device_data
+            hass, 
+            _LOGGER, 
+            self._rapt_device_id, 
+            self.ble_device_data,
+            lambda service_info: self.ble_device_data._async_handle_bluetooth_data_update(service_info)
         )
         
         # Current sensor data from BLE

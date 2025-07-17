@@ -119,15 +119,6 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.debug("Checking device %s with manufacturer data: %s", 
                          service_info.address, manufacturer_data)
             
-            # Check manufacturer data for RAPT indicators
-            # Your device shows manufacturer ID 3 with specific data pattern
-            if 3 in manufacturer_data:
-                data = manufacturer_data[3]
-                _LOGGER.debug("Found manufacturer ID 3 with data: %s", [hex(b) for b in data])
-                # Your device data starts with 0x01 0x13 0x61
-                if len(data) >= 3 and list(data[:3]) == [0x01, 0x13, 0x61]:
-                    _LOGGER.debug("Matched RAPT device pattern!")
-                    return True
             
             # Check for RAPT manufacturer ID with correct data start  
             if RAPT_MANUFACTURER_ID in manufacturer_data:
