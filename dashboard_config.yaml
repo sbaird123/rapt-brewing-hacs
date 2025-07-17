@@ -14,9 +14,9 @@ cards:
         name: Session Name
       - entity: text.rapt_brewing_session_manager_session_name
         name: Edit Session Name
-      - entity: button.rapt_brewing_session_manager_start_session
+      - entity: button.rapt_brewing_session_manager_start_new_session
         name: Start New Session
-      - entity: button.rapt_brewing_session_manager_delete_session
+      - entity: button.rapt_brewing_session_manager_delete_current_session
         name: Delete Session
 
   # Current Readings Card
