@@ -14,7 +14,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfTemperature,
-    UnitOfSignalStrength,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -111,7 +110,7 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         name="RAPT Pill Signal",
         icon="mdi:signal",
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-        native_unit_of_measurement=UnitOfSignalStrength.DBM,
+        native_unit_of_measurement="dBm",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(

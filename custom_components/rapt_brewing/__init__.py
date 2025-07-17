@@ -36,7 +36,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) 
         
         entry.runtime_data = coordinator
         
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        # Forward setup to platforms individually to reduce blocking
+        for platform in PLATFORMS:
+            hass.async_create_task(
+                hass.config_entries.async_forward_entry_setup(entry, platform)
+            )
         return True
     except Exception as e:
         _LOGGER.error("Failed to setup RAPT Brewing: %s", e)
