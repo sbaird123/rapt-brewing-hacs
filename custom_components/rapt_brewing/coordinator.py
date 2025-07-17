@@ -271,6 +271,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             )
             session.alerts.append(alert)
             
+            _LOGGER.warning("RAPT ALERT TRIGGERED: Type=%s, Message=%s, Session=%s", 
+                           alert_type, message, session.name)
+            
             # Send Home Assistant notification
             await self.hass.services.async_call(
                 "notify",
@@ -281,6 +284,11 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                     "notification_id": f"rapt_brewing_{alert_type}_{session.id}",
                 },
             )
+            
+            _LOGGER.warning("RAPT ALERT NOTIFICATION SENT: %s", message)
+        else:
+            _LOGGER.debug("RAPT ALERT SKIPPED (recent duplicate): Type=%s, Message=%s", 
+                         alert_type, message)
     
     async def start_session(self, name: str, recipe: str | None = None, 
                           original_gravity: float | None = None,

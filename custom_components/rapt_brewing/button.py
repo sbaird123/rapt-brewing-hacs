@@ -43,6 +43,11 @@ BUTTON_TYPES: tuple[ButtonEntityDescription, ...] = (
         name="Delete Current Session",
         icon="mdi:delete-circle",
     ),
+    ButtonEntityDescription(
+        key="clear_alerts",
+        name="Clear Alerts",
+        icon="mdi:alert-circle-check",
+    ),
 )
 
 
@@ -91,6 +96,8 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             await self._resume_session()
         elif self.entity_description.key == "delete_session":
             await self._delete_session()
+        elif self.entity_description.key == "clear_alerts":
+            await self._clear_alerts()
 
     async def _start_session(self) -> None:
         """Start a new brewing session."""
@@ -157,6 +164,24 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.warning("RAPT BUTTON: Cannot delete session, no current session")
+    
+    async def _clear_alerts(self) -> None:
+        """Clear all alerts for the current session."""
+        if self.coordinator.data.current_session:
+            session = self.coordinator.data.current_session
+            alert_count = len([alert for alert in session.alerts if not alert.acknowledged])
+            
+            # Mark all alerts as acknowledged
+            for alert in session.alerts:
+                alert.acknowledged = True
+            
+            await self.coordinator._save_data()
+            await self.coordinator.async_request_refresh()
+            
+            _LOGGER.warning("RAPT BUTTON: Cleared %d alert(s) for session: %s", 
+                           alert_count, session.name)
+        else:
+            _LOGGER.warning("RAPT BUTTON: Cannot clear alerts, no current session")
 
     @property
     def available(self) -> bool:
