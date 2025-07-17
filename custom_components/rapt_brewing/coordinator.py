@@ -6,11 +6,15 @@ import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.components.bluetooth.passive_update_processor import (
+    PassiveBluetoothProcessorCoordinator,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .ble_device import RAPTPillBluetoothDeviceData, RAPTPillSensorData
 from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
@@ -54,18 +58,29 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         self.data = RAPTBrewingData()
         self._rapt_device_id = entry.data.get(CONF_RAPT_DEVICE_ID)
         
+        # Initialize BLE processor
+        self.ble_device_data = RAPTPillBluetoothDeviceData(
+            hass, f"RAPT Pill {self._rapt_device_id}"
+        )
+        self.ble_coordinator = PassiveBluetoothProcessorCoordinator(
+            hass, _LOGGER, self._rapt_device_id, self.ble_device_data
+        )
+        
+        # Current sensor data from BLE
+        self._current_ble_data: RAPTPillSensorData | None = None
+        
     async def _async_update_data(self) -> RAPTBrewingData:
-        """Update data from RAPT BLE integration."""
+        """Update data from integrated BLE device."""
         try:
-            # Get data from RAPT BLE integration
-            rapt_data = await self._get_rapt_ble_data()
+            # Get current BLE sensor data
+            self._current_ble_data = self.ble_device_data.get_last_sensor_data()
             
-            if rapt_data and self.data.current_session:
-                # Update current session with new data
-                await self._update_current_session(rapt_data)
+            if self._current_ble_data and self.data.current_session:
+                # Update current session with new BLE data
+                await self._update_current_session_ble(self._current_ble_data)
                 
                 # Check for alerts
-                await self._check_alerts(rapt_data)
+                await self._check_alerts_ble(self._current_ble_data)
                 
                 # Save data to storage
                 await self._save_data()
@@ -75,55 +90,41 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         except Exception as err:
             raise UpdateFailed(f"Error updating RAPT brewing data: {err}") from err
     
-    async def _get_rapt_ble_data(self) -> dict[str, Any] | None:
-        """Get current data from RAPT BLE integration."""
-        if not self._rapt_device_id:
-            return None
-            
-        # Get the RAPT BLE device state
-        entity_registry: EntityRegistry = self.hass.helpers.entity_registry.async_get(self.hass)
-        
-        # Find RAPT BLE entities for this device
-        rapt_entities = {}
-        for entity_id, entry in entity_registry.entities.items():
-            if (entry.platform == "rapt_ble" and 
-                entity_id.startswith(f"sensor.{self._rapt_device_id}")):
-                state = self.hass.states.get(entity_id)
-                if state:
-                    sensor_type = entity_id.split(".")[-1]
-                    rapt_entities[sensor_type] = state.state
-        
-        return rapt_entities if rapt_entities else None
+    def get_current_ble_data(self) -> RAPTPillSensorData | None:
+        """Get current BLE sensor data."""
+        return self._current_ble_data
     
-    async def _update_current_session(self, rapt_data: dict[str, Any]) -> None:
-        """Update current session with new RAPT data."""
+    def get_ble_signal_strength(self) -> int | None:
+        """Get BLE signal strength."""
+        service_info = self.ble_device_data.get_last_service_info()
+        return service_info.rssi if service_info else None
+    
+    async def _update_current_session_ble(self, ble_data: RAPTPillSensorData) -> None:
+        """Update current session with new BLE data."""
         if not self.data.current_session:
             return
             
         session = self.data.current_session
         now = datetime.now()
         
-        # Extract sensor values
-        gravity = self._safe_float(rapt_data.get("specific_gravity"))
-        temperature = self._safe_float(rapt_data.get("temperature"))
-        battery = self._safe_int(rapt_data.get("battery"))
-        signal = self._safe_int(rapt_data.get("signal_strength"))
+        # Get signal strength from BLE service info
+        signal_strength = self.get_ble_signal_strength()
         
         # Add data point
         data_point = DataPoint(
             timestamp=now,
-            gravity=gravity,
-            temperature=temperature,
-            battery_level=battery,
-            signal_strength=signal,
+            gravity=ble_data.gravity,
+            temperature=ble_data.temperature,
+            battery_level=ble_data.battery,
+            signal_strength=signal_strength,
         )
         session.data_points.append(data_point)
         
         # Update current values
-        if gravity is not None:
-            session.current_gravity = gravity
-        if temperature is not None:
-            session.current_temperature = temperature
+        if ble_data.gravity is not None:
+            session.current_gravity = ble_data.gravity
+        if ble_data.temperature is not None:
+            session.current_temperature = ble_data.temperature
             
         # Calculate derived values
         self._calculate_derived_values(session)
@@ -160,8 +161,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                     gravity_diff = recent_points[-1].gravity - recent_points[0].gravity
                     session.fermentation_rate = gravity_diff / time_diff
     
-    async def _check_alerts(self, rapt_data: dict[str, Any]) -> None:
-        """Check for brewing alerts."""
+    async def _check_alerts_ble(self, ble_data: RAPTPillSensorData) -> None:
+        """Check for brewing alerts using BLE data."""
         if not self.data.current_session:
             return
             
@@ -186,18 +187,18 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                     )
         
         # Check temperature alerts
-        if session.current_temperature is not None:
-            if session.current_temperature > DEFAULT_TEMPERATURE_HIGH_THRESHOLD:
+        if ble_data.temperature is not None:
+            if ble_data.temperature > DEFAULT_TEMPERATURE_HIGH_THRESHOLD:
                 await self._add_alert(
                     session,
                     ALERT_TYPE_TEMPERATURE_HIGH,
-                    f"Temperature too high: {session.current_temperature}°C"
+                    f"Temperature too high: {ble_data.temperature:.1f}°C"
                 )
-            elif session.current_temperature < DEFAULT_TEMPERATURE_LOW_THRESHOLD:
+            elif ble_data.temperature < DEFAULT_TEMPERATURE_LOW_THRESHOLD:
                 await self._add_alert(
                     session,
                     ALERT_TYPE_TEMPERATURE_LOW,
-                    f"Temperature too low: {session.current_temperature}°C"
+                    f"Temperature too low: {ble_data.temperature:.1f}°C"
                 )
         
         # Check for fermentation completion
@@ -210,12 +211,11 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             )
         
         # Check battery level
-        battery = self._safe_int(rapt_data.get("battery"))
-        if battery is not None and battery < DEFAULT_LOW_BATTERY_THRESHOLD:
+        if ble_data.battery is not None and ble_data.battery < DEFAULT_LOW_BATTERY_THRESHOLD:
             await self._add_alert(
                 session,
                 ALERT_TYPE_LOW_BATTERY,
-                f"Low battery: {battery}%"
+                f"Low battery: {ble_data.battery}%"
             )
     
     async def _add_alert(self, session: BrewingSession, alert_type: str, message: str) -> None:

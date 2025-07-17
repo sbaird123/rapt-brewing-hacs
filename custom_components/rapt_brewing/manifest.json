@@ -1,13 +1,20 @@
 {
   "domain": "rapt_brewing",
   "name": "RAPT Brewing Session Manager",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "config_flow": true,
-  "requirements": [
-    "rapt-ble>=0.1.2"
+  "bluetooth": [
+    {
+      "manufacturer_id": 16722,
+      "manufacturer_data_start": [80, 84]
+    },
+    {
+      "manufacturer_id": 17739,
+      "manufacturer_data_start": [71]
+    }
   ],
   "dependencies": [
-    "rapt_ble"
+    "bluetooth_adapters"
   ],
-  "iot_class": "local_polling"
+  "iot_class": "local_push"
 }

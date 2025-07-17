@@ -56,22 +56,23 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 ## Configuration
 
 ### Prerequisites
-- RAPT BLE integration must be installed and configured
-- RAPT Pill hydrometer paired with Home Assistant
 - Home Assistant version 2023.9.0 or later
+- Bluetooth integration enabled in Home Assistant
+- RAPT Pill hydrometer device
 
 ### Setup Steps
-1. Go to **Configuration** → **Integrations**
-2. Click **Add Integration**
-3. Search for "RAPT Brewing Session Manager"
-4. Enter your RAPT device ID (found in RAPT BLE integration)
-5. Click **Submit**
+1. **Enable Bluetooth** in Home Assistant (if not already enabled)
+2. **Power on your RAPT Pill** and ensure it's in Bluetooth mode
+3. Go to **Settings** → **Devices & Services** → **Add Integration**
+4. Search for **"RAPT Brewing Session Manager"**
+5. The integration will **automatically discover** your RAPT Pill via Bluetooth
+6. Select your device from the list or enter manually if not found
+7. Click **Submit** to complete setup
 
-### Finding Your RAPT Device ID
-1. Go to **Configuration** → **Integrations**
-2. Find your RAPT BLE integration
-3. Click on it to see your devices
-4. Copy the device identifier (usually starts with the device name)
+### Bluetooth Setup
+- Ensure your RAPT Pill is powered on and transmitting
+- The device should be within Bluetooth range of your Home Assistant instance
+- If not automatically discovered, you can enter the device MAC address manually
 
 ## Usage
 

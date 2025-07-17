@@ -7,10 +7,15 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.components.bluetooth import (
+    BluetoothServiceInfoBleak,
+    async_discovered_service_info,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 
+from .ble_device import RAPT_MANUFACTURER_ID, KEGLAND_MANUFACTURER_ID, RAPT_DATA_START
 from .const import DOMAIN, CONF_RAPT_DEVICE_ID
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,58 +32,116 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._discovered_devices: dict[str, BluetoothServiceInfoBleak] = {}
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
         
+        # Discover RAPT devices via Bluetooth
+        discovered_devices = await self._async_discover_rapt_devices()
+        
+        if not discovered_devices and user_input is None:
+            # No devices found, but allow manual entry
+            return self.async_show_form(
+                step_id="user",
+                data_schema=STEP_USER_DATA_SCHEMA,
+                errors={"base": "no_devices_found"},
+                description_placeholders={
+                    "devices_count": "0"
+                }
+            )
+        
         if user_input is not None:
-            # Validate that the RAPT device exists
+            # Check if this is a discovered device or manual entry
             rapt_device_id = user_input[CONF_RAPT_DEVICE_ID]
             
-            if await self._async_validate_rapt_device(rapt_device_id):
-                # Create the config entry
-                return self.async_create_entry(
-                    title=f"RAPT Brewing - {rapt_device_id}",
-                    data=user_input,
-                )
+            if rapt_device_id in self._discovered_devices:
+                # Use discovered device
+                device_info = self._discovered_devices[rapt_device_id]
+                title = f"RAPT Pill ({device_info.name or rapt_device_id[:8]})"
             else:
-                errors["base"] = "invalid_device"
+                # Manual entry
+                title = f"RAPT Brewing - {rapt_device_id}"
+            
+            # Check for existing entries
+            await self.async_set_unique_id(rapt_device_id)
+            self._abort_if_unique_id_configured()
+            
+            # Create the config entry
+            return self.async_create_entry(
+                title=title,
+                data=user_input,
+            )
+
+        # Create dynamic schema with discovered devices
+        if discovered_devices:
+            device_options = {
+                address: f"{info.name or 'RAPT Pill'} ({address[:8]}...)"
+                for address, info in discovered_devices.items()
+            }
+            device_options["manual"] = "Enter manually"
+            
+            schema = vol.Schema({
+                vol.Required(CONF_RAPT_DEVICE_ID): vol.In(device_options)
+            })
+        else:
+            schema = STEP_USER_DATA_SCHEMA
 
         return self.async_show_form(
             step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
+            data_schema=schema,
             errors=errors,
+            description_placeholders={
+                "devices_count": str(len(discovered_devices))
+            }
         )
+
+    async def _async_discover_rapt_devices(self) -> dict[str, BluetoothServiceInfoBleak]:
+        """Discover RAPT devices via Bluetooth."""
+        discovered_devices = {}
+        
+        # Get all discovered Bluetooth service info
+        service_infos = async_discovered_service_info(self.hass)
+        
+        for service_info in service_infos:
+            if self._is_rapt_device(service_info):
+                discovered_devices[service_info.address] = service_info
+                self._discovered_devices[service_info.address] = service_info
+        
+        _LOGGER.debug("Discovered %d RAPT devices", len(discovered_devices))
+        return discovered_devices
+    
+    def _is_rapt_device(self, service_info: BluetoothServiceInfoBleak) -> bool:
+        """Check if a Bluetooth device is a RAPT Pill."""
+        manufacturer_data = service_info.manufacturer_data
+        
+        # Check for RAPT manufacturer ID with correct data start
+        if RAPT_MANUFACTURER_ID in manufacturer_data:
+            data = manufacturer_data[RAPT_MANUFACTURER_ID]
+            if len(data) >= 2 and list(data[:2]) == RAPT_DATA_START:
+                return True
+        
+        # Check for KegLand manufacturer ID
+        if KEGLAND_MANUFACTURER_ID in manufacturer_data:
+            return True
+        
+        # Check device name patterns
+        name = service_info.name or ""
+        if "rapt" in name.lower() or "pill" in name.lower():
+            return True
+        
+        return False
 
     async def _async_validate_rapt_device(self, device_id: str) -> bool:
         """Validate that the RAPT device exists."""
-        try:
-            # Check if RAPT BLE integration is loaded
-            integrations = self.hass.data.get("integrations", {})
-            if "rapt_ble" not in integrations:
-                _LOGGER.warning("RAPT BLE integration not found")
-                # Allow setup anyway - user might add RAPT device later
-                return True
-            
-            # Check if the device exists in entity registry
-            entity_registry = self.hass.helpers.entity_registry.async_get(self.hass)
-            
-            # Look for RAPT BLE entities with this device ID
-            for entity_id, entry in entity_registry.entities.items():
-                if (entry.platform == "rapt_ble" and 
-                    device_id.lower() in entity_id.lower()):
-                    return True
-            
-            # If no exact match found, still allow setup
-            _LOGGER.warning(f"RAPT device {device_id} not found, but allowing setup")
-            return True
-            
-        except Exception as e:
-            _LOGGER.exception("Error validating RAPT device: %s", e)
-            # Allow setup even if validation fails
-            return True
+        # Since we now have integrated BLE support, always allow setup
+        # Bluetooth device validation will happen at runtime
+        return True
 
     async def async_step_import(self, import_info: dict[str, Any]) -> FlowResult:
         """Handle import from configuration.yaml."""

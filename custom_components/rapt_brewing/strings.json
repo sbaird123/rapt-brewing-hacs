@@ -3,14 +3,15 @@
     "step": {
       "user": {
         "title": "RAPT Brewing Session Manager",
-        "description": "Configure your RAPT Brewing session manager",
+        "description": "Configure your RAPT Brewing session manager with integrated Bluetooth support. Found {devices_count} RAPT device(s).",
         "data": {
-          "rapt_device_id": "RAPT Device ID"
+          "rapt_device_id": "RAPT Device"
         }
       }
     },
     "error": {
-      "invalid_device": "Invalid RAPT device ID or RAPT BLE integration not found"
+      "invalid_device": "Invalid RAPT device ID",
+      "no_devices_found": "No RAPT devices found via Bluetooth. Ensure your RAPT Pill is powered on and nearby, then try again."
     },
     "abort": {
       "already_configured": "Device is already configured"
