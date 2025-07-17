@@ -2,7 +2,7 @@
   "domain": "rapt_brewing",
   "name": "RAPT Brewing Session Manager",
   "codeowners": ["@sbaird123"],
-  "version": "2.0.23",
+  "version": "2.0.24",
   "config_flow": true,
   "documentation": "https://github.com/sbaird123/rapt-brewing-hacs",
   "issue_tracker": "https://github.com/sbaird123/rapt-brewing-hacs/issues",

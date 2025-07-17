@@ -10,7 +10,7 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 ## Features
 
 ### 🍺 Complete Brewing Session Management
-- **Session Control**: Start, stop, delete, and rename brewing sessions
+- **Session Control**: Start new session (auto-stops existing), delete, and rename
 - **Multi-Session Support**: Track multiple brewing sessions with historical data
 - **Auto-Detection**: Automatically sets original gravity from first reading
 - **Target Setting**: Set target gravity and temperature for calculations
@@ -78,7 +78,7 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 ## Usage
 
 ### Starting Your First Session
-1. Use the "Start Brewing Session" button
+1. Use the "Start New Session" button (automatically stops any existing session)
 2. Session automatically created with timestamp name (e.g., "Brew 2025-01-17 18:30")
 3. Customize session name using the Session Name text input
 4. Set brewing parameters using number inputs:
@@ -93,8 +93,8 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 - **Alert System**: Automatic alerts for stuck fermentation, temperature issues, and low battery
 
 ### Managing Sessions
-- **Session Control**: Start, stop, delete operations
-- **Multi-Session**: Switch between active sessions
+- **Simple Session Control**: Start new session (auto-stops existing), delete, and rename
+- **Session History**: Track multiple brewing sessions with historical data
 - **Session Naming**: Customize session names during brewing
 - **Target Setting**: Set original gravity, target gravity, and target temperature
 
@@ -112,7 +112,6 @@ cards:
       - text.rapt_brewing_session_name
       - sensor.rapt_brewing_session_state
       - button.rapt_brewing_start_session
-      - button.rapt_brewing_stop_session
       - button.rapt_brewing_delete_session
   # ... more configuration available in dashboard_config.yaml
 ```
@@ -140,8 +139,7 @@ cards:
 ## Available Controls
 
 ### Buttons
-- **Start Brewing Session**: Creates a new session with timestamp name
-- **Stop Brewing Session**: Completes the current session
+- **Start New Session**: Creates a new session (auto-stops any existing session)
 - **Delete Current Session**: Removes the current session
 - **Clear Alerts**: Acknowledges and clears active alerts
 
@@ -152,9 +150,6 @@ cards:
 - **Original Gravity**: Set starting gravity (1.000-1.200 SG)
 - **Target Gravity**: Set target final gravity (0.990-1.200 SG)
 - **Target Temperature**: Set fermentation temperature (0-50°C)
-
-### Selects
-- **Active Session**: Switch between active brewing sessions
 
 ## Alerts & Notifications
 

@@ -20,13 +20,8 @@ _LOGGER = logging.getLogger(__name__)
 BUTTON_TYPES: tuple[ButtonEntityDescription, ...] = (
     ButtonEntityDescription(
         key="start_session",
-        name="Start Brewing Session",
+        name="Start New Session",
         icon="mdi:play-circle",
-    ),
-    ButtonEntityDescription(
-        key="stop_session",
-        name="Stop Brewing Session", 
-        icon="mdi:stop-circle",
     ),
     ButtonEntityDescription(
         key="delete_session",
@@ -78,8 +73,6 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
         
         if self.entity_description.key == "start_session":
             await self._start_session()
-        elif self.entity_description.key == "stop_session":
-            await self._stop_session()
         elif self.entity_description.key == "delete_session":
             await self._delete_session()
         elif self.entity_description.key == "clear_alerts":
@@ -87,10 +80,11 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
 
     async def _start_session(self) -> None:
         """Start a new brewing session."""
+        # Automatically stop any existing session
         if self.coordinator.data.current_session:
-            _LOGGER.warning("RAPT BUTTON: Cannot start session, current session exists: %s", 
-                           self.coordinator.data.current_session.name)
-            return
+            existing_session = self.coordinator.data.current_session
+            _LOGGER.warning("RAPT BUTTON: Auto-stopping existing session: %s", existing_session.name)
+            await self.coordinator.stop_session(existing_session.id)
             
         # This would typically open a dialog or form
         # For now, we'll create a default session
@@ -114,17 +108,6 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
         
         # Refresh coordinator data
         await self.coordinator.async_request_refresh()
-
-    async def _stop_session(self) -> None:
-        """Stop the current brewing session."""
-        if self.coordinator.data.current_session:
-            session_id = self.coordinator.data.current_session.id
-            session_name = self.coordinator.data.current_session.name
-            await self.coordinator.stop_session(session_id)
-            _LOGGER.warning("RAPT BUTTON: Stopped session: %s (%s)", session_name, session_id)
-            await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.warning("RAPT BUTTON: Cannot stop session, no current session")
 
     async def _delete_session(self) -> None:
         """Delete the current brewing session."""

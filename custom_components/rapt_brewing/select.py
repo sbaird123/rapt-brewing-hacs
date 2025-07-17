@@ -31,12 +31,7 @@ FERMENTATION_STAGES = [
 ]
 
 SELECT_TYPES: tuple[SelectEntityDescription, ...] = (
-    SelectEntityDescription(
-        key="active_session",
-        name="Active Session",
-        icon="mdi:beer",
-        options=[],  # Will be populated dynamically
-    ),
+    # No select entities needed for single device setup
 )
 
 

@@ -10,14 +10,10 @@ cards:
     entities:
       - entity: text.rapt_brewing_session_name
         name: Session Name
-      - entity: select.rapt_brewing_active_session
-        name: Active Session
       - entity: sensor.rapt_brewing_session_state
         name: Session State
       - entity: button.rapt_brewing_start_session
-        name: Start Session
-      - entity: button.rapt_brewing_stop_session
-        name: Stop Session
+        name: Start New Session
       - entity: button.rapt_brewing_delete_session
         name: Delete Session
 
@@ -170,7 +166,7 @@ cards:
         entities:
           - text.rapt_brewing_session_name
           - button.rapt_brewing_start_session
-          - button.rapt_brewing_stop_session
+          - button.rapt_brewing_delete_session
         show_header_toggle: false
       - type: entities
         title: Current
@@ -226,7 +222,7 @@ cards:
     entities:
       - text.rapt_brewing_session_name
       - button.rapt_brewing_start_session
-      - button.rapt_brewing_stop_session
+      - button.rapt_brewing_delete_session
     show_header_toggle: false
 
   - type: entities
