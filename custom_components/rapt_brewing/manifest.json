@@ -2,7 +2,7 @@
   "domain": "rapt_brewing",
   "name": "RAPT Brewing Session Manager",
   "codeowners": ["@sbaird123"],
-  "version": "2.0.0",
+  "version": "2.0.1",
   "config_flow": true,
   "documentation": "https://github.com/sbaird123/rapt-brewing-hacs",
   "issue_tracker": "https://github.com/sbaird123/rapt-brewing-hacs/issues",
@@ -17,7 +17,7 @@
     }
   ],
   "dependencies": [
-    "bluetooth_adapters"
+    "bluetooth"
   ],
   "requirements": [],
   "iot_class": "local_push"

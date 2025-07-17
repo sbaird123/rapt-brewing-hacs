@@ -26,18 +26,22 @@ RAPTBrewingConfigEntry = ConfigEntry
 
 async def async_setup_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) -> bool:
     """Set up RAPT Brewing from a config entry."""
-    coordinator = RAPTBrewingCoordinator(hass, entry)
-    
-    # Start the BLE coordinator first
-    await coordinator.ble_coordinator.async_start()
-    
-    # Then do the first refresh
-    await coordinator.async_config_entry_first_refresh()
-    
-    entry.runtime_data = coordinator
-    
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    return True
+    try:
+        coordinator = RAPTBrewingCoordinator(hass, entry)
+        
+        # Start the BLE coordinator first
+        await coordinator.ble_coordinator.async_start()
+        
+        # Then do the first refresh
+        await coordinator.async_config_entry_first_refresh()
+        
+        entry.runtime_data = coordinator
+        
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        return True
+    except Exception as e:
+        _LOGGER.error("Failed to setup RAPT Brewing: %s", e)
+        return False
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) -> bool:
