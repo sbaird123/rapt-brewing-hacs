@@ -6,7 +6,7 @@
 # ==========================================
 type: vertical-stack
 cards:
-  # Top Row - 3 columns for better readability
+  # Top Row - Logically grouped measurements
   - type: horizontal-stack
     cards:
       - type: entities
@@ -22,12 +22,42 @@ cards:
             name: Delete Session
         show_header_toggle: false
       - type: entities
-        title: Current Readings
+        title: Gravity Readings
         entities:
+          - entity: sensor.rapt_brewing_session_manager_original_gravity
+            name: Original Gravity
           - entity: sensor.rapt_brewing_session_manager_current_gravity
             name: Current Gravity
+          - entity: number.rapt_brewing_session_manager_target_gravity
+            name: Target Gravity
+        show_header_toggle: false
+      - type: entities
+        title: Temperature Readings
+        entities:
           - entity: sensor.rapt_brewing_session_manager_current_temperature
             name: Current Temperature
+          - entity: number.rapt_brewing_session_manager_target_temperature
+            name: Target Temperature
+        show_header_toggle: false
+
+  # Second Row - Progress and device info
+  - type: horizontal-stack
+    cards:
+      - type: entities
+        title: Fermentation Progress
+        entities:
+          - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
+            name: Alcohol %
+          - entity: sensor.rapt_brewing_session_manager_attenuation
+            name: Attenuation %
+          - entity: sensor.rapt_brewing_session_manager_fermentation_rate
+            name: Fermentation Rate
+          - entity: sensor.rapt_brewing_session_manager_session_duration
+            name: Session Duration
+        show_header_toggle: false
+      - type: entities
+        title: Device Status
+        entities:
           - entity: sensor.rapt_brewing_session_manager_rapt_pill_battery
             name: Battery Level
           - entity: sensor.rapt_brewing_session_manager_rapt_pill_signal
@@ -36,33 +66,13 @@ cards:
             name: Last Reading
         show_header_toggle: false
       - type: entities
-        title: Brewing Targets & Progress
+        title: Alerts
         entities:
-          - entity: sensor.rapt_brewing_session_manager_original_gravity
-            name: Original Gravity
-          - entity: number.rapt_brewing_session_manager_target_gravity
-            name: Target Gravity
-          - entity: number.rapt_brewing_session_manager_target_temperature
-            name: Target Temperature
-          - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
-            name: Alcohol %
-          - entity: sensor.rapt_brewing_session_manager_attenuation
-            name: Attenuation %
-          - entity: sensor.rapt_brewing_session_manager_fermentation_rate
-            name: Fermentation Rate
-          - entity: sensor.rapt_brewing_session_manager_session_duration
-            name: Session Duration (hours)
+          - entity: sensor.rapt_brewing_session_manager_active_alerts
+            name: Active Alerts
+          - entity: button.rapt_brewing_session_manager_clear_alerts
+            name: Clear Alerts
         show_header_toggle: false
-
-  # Alerts - Full width
-  - type: entities
-    title: Alerts
-    entities:
-      - entity: sensor.rapt_brewing_session_manager_active_alerts
-        name: Active Alerts
-      - entity: button.rapt_brewing_session_manager_clear_alerts
-        name: Clear Alerts
-    show_header_toggle: false
 
   # Charts - Full width
   - type: history-graph
