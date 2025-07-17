@@ -33,16 +33,6 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         icon="mdi:beer",
     ),
     SensorEntityDescription(
-        key="session_state",
-        name="Session State",
-        icon="mdi:state-machine",
-    ),
-    SensorEntityDescription(
-        key="fermentation_stage",
-        name="Fermentation Stage",
-        icon="mdi:flask",
-    ),
-    SensorEntityDescription(
         key="original_gravity",
         name="Original Gravity",
         icon="mdi:speedometer",
@@ -121,12 +111,6 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     SensorEntityDescription(
-        key="total_sessions",
-        name="Total Sessions",
-        icon="mdi:counter",
-        state_class=SensorStateClass.TOTAL,
-    ),
-    SensorEntityDescription(
         key="active_alerts",
         name="Active Alerts",
         icon="mdi:alert",
@@ -176,18 +160,6 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         if self.entity_description.key == "session_name":
             return (
                 self.coordinator.data.current_session.name
-                if self.coordinator.data.current_session
-                else None
-            )
-        elif self.entity_description.key == "session_state":
-            return (
-                self.coordinator.data.current_session.state
-                if self.coordinator.data.current_session
-                else "idle"
-            )
-        elif self.entity_description.key == "fermentation_stage":
-            return (
-                self.coordinator.data.current_session.stage
                 if self.coordinator.data.current_session
                 else None
             )
@@ -258,8 +230,6 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
                     duration = dt_util.now() - self.coordinator.data.current_session.started_at
                 return round(duration.total_seconds() / 3600, 1)
             return None
-        elif self.entity_description.key == "total_sessions":
-            return len(self.coordinator.data.sessions)
         elif self.entity_description.key == "active_alerts":
             if self.coordinator.data.current_session:
                 return len([

@@ -28,7 +28,7 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 - **Device Alerts**: Low battery and connectivity warnings
 
 ### 📈 Rich Data Monitoring
-- **13 Comprehensive Sensors**: Complete brewing data coverage
+- **11 Essential Sensors**: Complete brewing data coverage
 - **Real-time Updates**: Live gravity, temperature, and device status
 - **Historical Analysis**: Long-term data storage and trend analysis
 - **Dashboard Ready**: Complete Lovelace configuration included
@@ -121,20 +121,19 @@ cards:
 | Sensor | Description | Unit |
 |--------|-------------|------|
 | `session_name` | Current session name | - |
-| `session_state` | Session state (active/idle/completed) | - |
+| `original_gravity` | Starting gravity | SG |
 | `current_gravity` | Current specific gravity | SG |
+| `target_gravity` | Target final gravity | SG |
 | `alcohol_percentage` | Calculated alcohol by volume | % |
 | `attenuation` | Apparent attenuation | % |
 | `fermentation_rate` | Gravity change rate | SG/hr |
 | `current_temperature` | Current temperature | °C |
-| `battery_level` | RAPT Pill battery level | % |
-| `session_duration` | Total session time | hours |
-| `active_alerts` | Number of active alerts | count |
-| `target_gravity` | Target final gravity | SG |
 | `target_temperature` | Target fermentation temperature | °C |
+| `battery_level` | RAPT Pill battery level | % |
 | `signal_strength` | BLE signal strength | dBm |
+| `session_duration` | Total session time | hours |
 | `last_reading_time` | Last sensor reading timestamp | timestamp |
-| `total_sessions` | Total number of sessions | count |
+| `active_alerts` | Number of active alerts | count |
 
 ## Available Controls
 

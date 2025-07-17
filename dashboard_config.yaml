@@ -10,8 +10,6 @@ cards:
     entities:
       - entity: text.rapt_brewing_session_name
         name: Session Name
-      - entity: sensor.rapt_brewing_session_state
-        name: Session State
       - entity: button.rapt_brewing_start_session
         name: Start New Session
       - entity: button.rapt_brewing_delete_session
@@ -65,12 +63,6 @@ cards:
       - entity: button.rapt_brewing_clear_alerts
         name: Clear Alerts
 
-  # Statistics Card
-  - type: entities
-    title: Statistics
-    entities:
-      - entity: sensor.rapt_brewing_total_sessions
-        name: Total Sessions
 
   # Gravity Chart Card
   - type: history-graph

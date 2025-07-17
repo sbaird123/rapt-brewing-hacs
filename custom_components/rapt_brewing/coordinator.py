@@ -190,6 +190,11 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             session.alcohol_percentage = (
                 (session.original_gravity - session.current_gravity) * 131.25
             )
+            _LOGGER.debug("RAPT CALC: Alcohol %%.1f%% (OG=%.3f, CG=%.3f)", 
+                         session.alcohol_percentage, session.original_gravity, session.current_gravity)
+        else:
+            _LOGGER.warning("RAPT CALC: Cannot calculate alcohol - OG=%s, CG=%s", 
+                           session.original_gravity, session.current_gravity)
         
         # Calculate attenuation
         if session.original_gravity and session.current_gravity and session.target_gravity:
@@ -198,6 +203,11 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 (session.original_gravity - session.target_gravity) * 100
             )
             session.attenuation = apparent_attenuation
+            _LOGGER.debug("RAPT CALC: Attenuation %.1f%% (OG=%.3f, CG=%.3f, TG=%.3f)", 
+                         session.attenuation, session.original_gravity, session.current_gravity, session.target_gravity)
+        else:
+            _LOGGER.warning("RAPT CALC: Cannot calculate attenuation - OG=%s, CG=%s, TG=%s", 
+                           session.original_gravity, session.current_gravity, session.target_gravity)
         
         # Calculate fermentation rate (gravity change per hour)
         if len(session.data_points) >= 2:
