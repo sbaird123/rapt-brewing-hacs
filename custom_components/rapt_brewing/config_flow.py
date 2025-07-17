@@ -7,16 +7,26 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.components.bluetooth import (
-    BluetoothServiceInfoBleak,
-    async_discovered_service_info,
-)
+try:
+    from homeassistant.components.bluetooth import (
+        BluetoothServiceInfoBleak,
+        async_discovered_service_info,
+    )
+    BLUETOOTH_AVAILABLE = True
+except ImportError:
+    # Bluetooth component not available
+    BLUETOOTH_AVAILABLE = False
+    BluetoothServiceInfoBleak = None
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 
-from .ble_device import RAPT_MANUFACTURER_ID, KEGLAND_MANUFACTURER_ID, RAPT_DATA_START
 from .const import DOMAIN, CONF_RAPT_DEVICE_ID
+
+# BLE constants - defined inline to avoid circular imports
+RAPT_MANUFACTURER_ID = 16722  # 0x4152 - "RA" from RAPT
+KEGLAND_MANUFACTURER_ID = 17739  # 0x454B - "KE" from KEG
+RAPT_DATA_START = [80, 84]  # "PT" - Pill Telemetry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,10 +41,11 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for RAPT Brewing."""
 
     VERSION = 1
+    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     def __init__(self) -> None:
         """Initialize the config flow."""
-        self._discovered_devices: dict[str, BluetoothServiceInfoBleak] = {}
+        self._discovered_devices: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -101,9 +112,13 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
 
-    async def _async_discover_rapt_devices(self) -> dict[str, BluetoothServiceInfoBleak]:
+    async def _async_discover_rapt_devices(self) -> dict[str, Any]:
         """Discover RAPT devices via Bluetooth."""
         discovered_devices = {}
+        
+        if not BLUETOOTH_AVAILABLE:
+            _LOGGER.warning("Bluetooth component not available")
+            return discovered_devices
         
         # Get all discovered Bluetooth service info
         service_infos = async_discovered_service_info(self.hass)
@@ -116,7 +131,7 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.debug("Discovered %d RAPT devices", len(discovered_devices))
         return discovered_devices
     
-    def _is_rapt_device(self, service_info: BluetoothServiceInfoBleak) -> bool:
+    def _is_rapt_device(self, service_info: Any) -> bool:
         """Check if a Bluetooth device is a RAPT Pill."""
         manufacturer_data = service_info.manufacturer_data
         

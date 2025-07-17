@@ -19,7 +19,9 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON, Platform.SELECT]
 
 _LOGGER = logging.getLogger(__name__)
 
-RAPTBrewingConfigEntry = ConfigEntry[RAPTBrewingData]
+# Type alias for config entry - remove generic typing to avoid issues
+# RAPTBrewingConfigEntry = ConfigEntry[RAPTBrewingData]
+RAPTBrewingConfigEntry = ConfigEntry
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) -> bool:
