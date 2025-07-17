@@ -89,28 +89,40 @@ class RAPTPillBLEParser:
         try:
             _LOGGER.debug("Parsing RAPT data: %d bytes: %s", len(data), data.hex())
             
-            # Try multiple format possibilities based on data length
-            unpacked = None
+            # Log the raw data for debugging
+            _LOGGER.warning("RAPT DEBUG: Raw data bytes: %s", [hex(b) for b in data])
+            
+            # Try the format that matches your data: 50540200000000000093ab4497a7d405dbfb9b412a0000
+            # This is 26 bytes, let's manually parse key fields
             if len(data) >= 26:
-                # Try the full 26-byte format first
-                try:
-                    unpacked = struct.unpack(">BB6sHfhhhhI", data[:26])
-                    _LOGGER.debug("Successfully parsed 26-byte format")
-                except struct.error:
-                    pass
-            
-            if unpacked is None and len(data) >= 22:
-                # Try 22-byte format
-                try:
-                    unpacked = struct.unpack(">BB6sHfhhhh", data[:22])
-                    _LOGGER.debug("Successfully parsed 22-byte format")
-                except struct.error:
-                    pass
-            
-            if unpacked is None:
-                # Fallback: try to extract what we can
-                _LOGGER.warning("Could not parse RAPT data with standard formats, trying basic extraction")
-                # Just return basic data to show the device is connected
+                # Manual parsing based on your actual data
+                data_type = data[0]  # 0x50 = 80 = 'P'
+                data_subtype = data[1]  # 0x54 = 84 = 'T' 
+                
+                # Extract temperature (bytes 12-15 as float)
+                temp_bytes = data[12:16]
+                temperature = struct.unpack(">f", temp_bytes)[0]
+                
+                # Extract gravity (bytes 16-17 as unsigned short)
+                gravity_bytes = data[16:18] 
+                gravity_raw = struct.unpack(">H", gravity_bytes)[0]
+                
+                # Extract battery (bytes 18-19)
+                battery_bytes = data[18:20]
+                battery_raw = struct.unpack(">H", battery_bytes)[0]
+                
+                _LOGGER.warning("RAPT DEBUG: Parsed - temp_raw=%.2f, gravity_raw=%d, battery_raw=%d", 
+                               temperature, gravity_raw, battery_raw)
+                
+                # Convert values
+                gravity = gravity_raw / 1000.0 if gravity_raw > 0 else None
+                battery = int(battery_raw / 256.0) if battery_raw > 0 else None
+                
+                _LOGGER.warning("RAPT DEBUG: Final - temp=%.2f°C, gravity=%.3f, battery=%d%%", 
+                               temperature or 0, gravity or 0, battery or 0)
+            else:
+                # Fallback for shorter data
+                _LOGGER.warning("RAPT data too short: %d bytes", len(data))
                 return RAPTPillSensorData(
                     temperature=20.0,  # Placeholder
                     gravity=1.020,     # Placeholder
@@ -118,43 +130,10 @@ class RAPTPillBLEParser:
                     signal_strength=None
                 )
             
-            # Parse based on what format worked
-            
-            data_type = unpacked[0]
-            flags = unpacked[1]  
-            device_id = unpacked[2]
-            sequence = unpacked[3]
-            temperature = unpacked[4]  # Already in Celsius
-            gravity_raw = unpacked[5]
-            battery_raw = unpacked[6]
-            accel_x_raw = unpacked[7]
-            accel_y_raw = unpacked[8]
-            
-            # Convert raw values to meaningful units
-            # Try different gravity scaling factors
-            if gravity_raw != 0:
-                # Try various common scaling factors used by RAPT
-                gravity_scaled = gravity_raw / 1000.0
-                if gravity_scaled < 0.5 or gravity_scaled > 2.0:
-                    # Try without scaling first
-                    if 0.5 <= gravity_raw <= 2.0:
-                        gravity = gravity_raw
-                    # Try different divisors
-                    elif 500 <= gravity_raw <= 2000:
-                        gravity = gravity_raw / 1000.0
-                    elif 50000 <= gravity_raw <= 200000:
-                        gravity = gravity_raw / 100000.0
-                    else:
-                        _LOGGER.debug("Gravity raw value %d doesn't fit expected patterns", gravity_raw)
-                        gravity = None
-                else:
-                    gravity = gravity_scaled
-            else:
-                gravity = None
-            battery = int(battery_raw) if battery_raw >= 0 else None
-            accel_x = accel_x_raw / 16.0
-            accel_y = accel_y_raw / 16.0
-            accel_z = 0.0  # We only have X and Y in this format
+            # Set accelerometer data (we don't have this in manual parsing)
+            accel_x = 0.0
+            accel_y = 0.0
+            accel_z = 0.0
             
             # Validate reasonable ranges
             if temperature < -50 or temperature > 100:
