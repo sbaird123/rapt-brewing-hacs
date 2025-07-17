@@ -77,6 +77,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             self.ble_device_data._async_handle_bluetooth_data_update
         )
         
+        # Start the BLE coordinator to begin receiving data
+        _LOGGER.warning("RAPT COORDINATOR: Starting BLE coordinator for device: %s", self._rapt_device_id)
+        
         # Current sensor data from BLE
         self._current_ble_data: Any = None
         
