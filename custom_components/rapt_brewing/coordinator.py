@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
 
 if TYPE_CHECKING:
     from homeassistant.components.bluetooth.passive_update_processor import (
@@ -58,6 +59,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         self.store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.data = RAPTBrewingData()
         self._rapt_device_id = entry.data.get(CONF_RAPT_DEVICE_ID)
+        self._ble_cancel_callback = None
         
         # Initialize BLE processor - import at runtime to avoid blocking
         from homeassistant.components.bluetooth.passive_update_processor import (
@@ -79,6 +81,25 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         
         # Start the BLE coordinator to begin receiving data
         _LOGGER.warning("RAPT COORDINATOR: Starting BLE coordinator for device: %s", self._rapt_device_id)
+        
+        # Register with Home Assistant's Bluetooth system (needed for ESPHome BLE proxies)
+        from homeassistant.components.bluetooth import async_register_callback
+        
+        def ble_callback(service_info: BluetoothServiceInfoBleak, change: str) -> None:
+            """Handle Bluetooth updates from ESPHome proxies."""
+            _LOGGER.warning("ESPHome BLE CALLBACK: Device %s, Change: %s, Manufacturers: %s", 
+                           service_info.address, change, list(service_info.manufacturer_data.keys()))
+            if service_info.address == self._rapt_device_id:
+                self.ble_device_data._async_handle_bluetooth_data_update(service_info)
+        
+        # Register callback for our specific device
+        self._ble_cancel_callback = async_register_callback(
+            hass,
+            ble_callback,
+            {"address": self._rapt_device_id},
+            "advertisement"
+        )
+        _LOGGER.warning("RAPT COORDINATOR: Registered ESPHome BLE callback for device: %s", self._rapt_device_id)
         
         # Current sensor data from BLE
         self._current_ble_data: Any = None
@@ -340,6 +361,13 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         """Perform first refresh."""
         await self._load_data()
         await super().async_config_entry_first_refresh()
+    
+    async def async_shutdown(self) -> None:
+        """Shutdown the coordinator."""
+        if self._ble_cancel_callback:
+            self._ble_cancel_callback()
+            self._ble_cancel_callback = None
+        await super().async_shutdown()
     
     @staticmethod
     def _safe_float(value: Any) -> float | None:
