@@ -109,8 +109,8 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
         # This would typically open a dialog or form
         # For now, we'll create a default session
         # Create a better default name with timestamp
-        from datetime import datetime
-        session_name = f"Brew {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        import homeassistant.util.dt as dt_util
+        session_name = f"Brew {dt_util.now().strftime('%Y-%m-%d %H:%M')}"
         
         # Check if there's a custom session name from text input
         # This is a simplified approach - in a real implementation you'd want

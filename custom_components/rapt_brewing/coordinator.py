@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta
+import homeassistant.util.dt as dt_util
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -140,7 +141,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             return
             
         session = self.data.current_session
-        now = datetime.now()
+        now = dt_util.now()
         
         # Get signal strength from BLE service info
         signal_strength = self.get_ble_signal_strength()
@@ -202,7 +203,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             return
             
         session = self.data.current_session
-        now = datetime.now()
+        now = dt_util.now()
         
         # Check for stuck fermentation
         if session.fermentation_rate is not None and abs(session.fermentation_rate) < 0.001:
@@ -256,7 +257,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
     async def _add_alert(self, session: BrewingSession, alert_type: str, message: str) -> None:
         """Add an alert to the session."""
         # Check if similar alert already exists (within last hour)
-        now = datetime.now()
+        now = dt_util.now()
         recent_alerts = [
             alert for alert in session.alerts
             if (alert.type == alert_type and 
@@ -295,7 +296,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                           target_gravity: float | None = None,
                           target_temperature: float | None = None) -> str:
         """Start a new brewing session."""
-        session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        session_id = f"session_{dt_util.now().strftime('%Y%m%d_%H%M%S')}"
         
         session = BrewingSession(
             id=session_id,
@@ -305,7 +306,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             target_gravity=target_gravity,
             target_temperature=target_temperature,
             state=SESSION_STATE_ACTIVE,
-            started_at=datetime.now(),
+            started_at=dt_util.now(),
         )
         
         self.data.add_session(session)
@@ -319,7 +320,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         session = self.data.get_session(session_id)
         if session:
             session.state = SESSION_STATE_IDLE
-            session.completed_at = datetime.now()
+            session.completed_at = dt_util.now()
             
             if self.data.current_session and self.data.current_session.id == session_id:
                 self.data.set_current_session(None)

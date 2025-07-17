@@ -251,11 +251,11 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
             return None
         elif self.entity_description.key == "session_duration":
             if self.coordinator.data.current_session and self.coordinator.data.current_session.started_at:
-                from datetime import datetime
+                import homeassistant.util.dt as dt_util
                 if self.coordinator.data.current_session.completed_at:
                     duration = self.coordinator.data.current_session.completed_at - self.coordinator.data.current_session.started_at
                 else:
-                    duration = datetime.now() - self.coordinator.data.current_session.started_at
+                    duration = dt_util.now() - self.coordinator.data.current_session.started_at
                 return round(duration.total_seconds() / 3600, 1)
             return None
         elif self.entity_description.key == "total_sessions":
