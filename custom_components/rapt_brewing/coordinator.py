@@ -65,6 +65,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         )
         from .ble_device import RAPTPillBluetoothDeviceData, RAPTPillSensorData
         
+        _LOGGER.warning("RAPT COORDINATOR: Creating BLE device data for device: %s", self._rapt_device_id)
         self.ble_device_data = RAPTPillBluetoothDeviceData(
             hass, f"RAPT Pill {self._rapt_device_id}"
         )

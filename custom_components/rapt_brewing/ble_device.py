@@ -196,16 +196,19 @@ class RAPTPillBluetoothDeviceData(PassiveBluetoothDataProcessor):
         self.device_name = device_name
         self.parser = RAPTPillBLEParser()
         self._last_service_info: BluetoothServiceInfoBleak | None = None
+        
+        # Log that the BLE device processor was created
+        _LOGGER.warning("RAPT BLE DEVICE PROCESSOR CREATED for device: %s", device_name)
     
     def _async_handle_bluetooth_data_update(
         self, service_info: BluetoothServiceInfoBleak
     ) -> PassiveBluetoothDataUpdate:
         """Handle Bluetooth data updates."""
-        self._last_service_info = service_info
-        
-        # Log every BLE update we receive
-        _LOGGER.warning("BLE UPDATE: Received data from %s with manufacturers: %s", 
+        # Log every BLE update we receive - GUARANTEED WARNING LOG
+        _LOGGER.warning("!!! RAPT BLE UPDATE RECEIVED !!! Device: %s, Manufacturers: %s", 
                        service_info.address, list(service_info.manufacturer_data.keys()))
+        
+        self._last_service_info = service_info
         
         # Filter to only RAPT devices since we can't use matcher parameter
         manufacturer_data = service_info.manufacturer_data
