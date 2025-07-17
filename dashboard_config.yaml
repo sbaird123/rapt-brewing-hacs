@@ -10,8 +10,10 @@ cards:
   - type: entities
     title: Session Control
     entities:
-      - entity: text.rapt_brewing_session_manager_session_name
+      - entity: sensor.rapt_brewing_session_manager_session_name
         name: Session Name
+      - entity: text.rapt_brewing_session_manager_session_name
+        name: Edit Session Name
       - entity: button.rapt_brewing_session_manager_start_session
         name: Start New Session
       - entity: button.rapt_brewing_session_manager_delete_session
