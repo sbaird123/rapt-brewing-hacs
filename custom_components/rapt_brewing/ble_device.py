@@ -89,51 +89,58 @@ class RAPTPillBLEParser:
         try:
             _LOGGER.debug("Parsing RAPT data: %d bytes: %s", len(data), data.hex())
             
-            # Log the raw data for debugging
-            _LOGGER.warning("RAPT DEBUG: Raw data bytes: %s", [hex(b) for b in data])
+            # Use the official RAPT-BLE parsing format
+            _LOGGER.warning("RAPT DEBUG: Raw data (%d bytes): %s", len(data), data.hex())
             
-            # Try the format that matches your data: 50540200000000000093ab4497a7d405dbfb9b412a0000
-            # This is 26 bytes, let's manually parse key fields
-            if len(data) >= 26:
-                # Manual parsing based on your actual data
-                data_type = data[0]  # 0x50 = 80 = 'P'
-                data_subtype = data[1]  # 0x54 = 84 = 'T' 
+            if len(data) >= 23:
+                # Official RAPT format: ">B6sHfhhhh" 
+                # B = version (1 byte)
+                # 6s = MAC address (6 bytes) 
+                # H = temperature raw (2 bytes)
+                # f = gravity (4 bytes)
+                # h = accel X (2 bytes)
+                # h = accel Y (2 bytes) 
+                # h = accel Z (2 bytes)
+                # h = battery (2 bytes)
                 
-                # Extract temperature (bytes 12-15 as float)
-                temp_bytes = data[12:16]
-                temperature = struct.unpack(">f", temp_bytes)[0]
-                
-                # Extract gravity (bytes 16-17 as unsigned short)
-                gravity_bytes = data[16:18] 
-                gravity_raw = struct.unpack(">H", gravity_bytes)[0]
-                
-                # Extract battery (bytes 18-19)
-                battery_bytes = data[18:20]
-                battery_raw = struct.unpack(">H", battery_bytes)[0]
-                
-                _LOGGER.warning("RAPT DEBUG: Parsed - temp_raw=%.2f, gravity_raw=%d, battery_raw=%d", 
-                               temperature, gravity_raw, battery_raw)
-                
-                # Convert values
-                gravity = gravity_raw / 1000.0 if gravity_raw > 0 else None
-                battery = int(battery_raw / 256.0) if battery_raw > 0 else None
-                
-                _LOGGER.warning("RAPT DEBUG: Final - temp=%.2f°C, gravity=%.3f, battery=%d%%", 
-                               temperature or 0, gravity or 0, battery or 0)
+                try:
+                    # Skip the "PT" prefix (first 2 bytes) and parse the rest
+                    payload = data[2:]  # Skip "50 54" prefix
+                    
+                    if len(payload) >= 21:
+                        unpacked = struct.unpack(">B6sHfhhhh", payload[:21])
+                        
+                        version = unpacked[0]
+                        mac_bytes = unpacked[1]
+                        temp_raw = unpacked[2] 
+                        gravity_float = unpacked[3]
+                        accel_x = unpacked[4] / 16.0
+                        accel_y = unpacked[5] / 16.0  
+                        accel_z = unpacked[6] / 16.0
+                        battery_raw = unpacked[7]
+                        
+                        # Convert using official RAPT formulas
+                        temperature = temp_raw / 128.0 - 273.15  # Kelvin to Celsius
+                        gravity = gravity_float / 1000.0
+                        battery = int(battery_raw / 256.0)
+                        
+                        _LOGGER.warning("RAPT DEBUG: version=%d, temp_raw=%d, gravity_float=%.3f, battery_raw=%d", 
+                                       version, temp_raw, gravity_float, battery_raw)
+                        _LOGGER.warning("RAPT DEBUG: Final - temp=%.2f°C, gravity=%.3f, battery=%d%%", 
+                                       temperature, gravity, battery)
+                    else:
+                        _LOGGER.warning("RAPT payload too short after removing prefix: %d bytes", len(payload))
+                        temperature, gravity, battery = 20.0, 1.020, 80
+                        accel_x = accel_y = accel_z = 0.0
+                        
+                except struct.error as e:
+                    _LOGGER.warning("RAPT struct unpack failed: %s", e)
+                    temperature, gravity, battery = 20.0, 1.020, 80
+                    accel_x = accel_y = accel_z = 0.0
             else:
-                # Fallback for shorter data
                 _LOGGER.warning("RAPT data too short: %d bytes", len(data))
-                return RAPTPillSensorData(
-                    temperature=20.0,  # Placeholder
-                    gravity=1.020,     # Placeholder
-                    battery=80,        # Placeholder
-                    signal_strength=None
-                )
-            
-            # Set accelerometer data (we don't have this in manual parsing)
-            accel_x = 0.0
-            accel_y = 0.0
-            accel_z = 0.0
+                temperature, gravity, battery = 20.0, 1.020, 80
+                accel_x = accel_y = accel_z = 0.0
             
             # Validate reasonable ranges
             if temperature < -50 or temperature > 100:
@@ -195,6 +202,10 @@ class RAPTPillBluetoothDeviceData(PassiveBluetoothDataProcessor):
     ) -> PassiveBluetoothDataUpdate:
         """Handle Bluetooth data updates."""
         self._last_service_info = service_info
+        
+        # Log every BLE update we receive
+        _LOGGER.warning("BLE UPDATE: Received data from %s with manufacturers: %s", 
+                       service_info.address, list(service_info.manufacturer_data.keys()))
         
         # Filter to only RAPT devices since we can't use matcher parameter
         manufacturer_data = service_info.manufacturer_data
