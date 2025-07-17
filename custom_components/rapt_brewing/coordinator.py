@@ -6,15 +6,16 @@ import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.bluetooth.passive_update_processor import (
-    PassiveBluetoothProcessorCoordinator,
-)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .ble_device import RAPTPillBluetoothDeviceData, RAPTPillSensorData
+if TYPE_CHECKING:
+    from homeassistant.components.bluetooth.passive_update_processor import (
+        PassiveBluetoothProcessorCoordinator,
+    )
+    from .ble_device import RAPTPillBluetoothDeviceData, RAPTPillSensorData
 from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
@@ -58,7 +59,12 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         self.data = RAPTBrewingData()
         self._rapt_device_id = entry.data.get(CONF_RAPT_DEVICE_ID)
         
-        # Initialize BLE processor
+        # Initialize BLE processor - import at runtime to avoid blocking
+        from homeassistant.components.bluetooth.passive_update_processor import (
+            PassiveBluetoothProcessorCoordinator,
+        )
+        from .ble_device import RAPTPillBluetoothDeviceData, RAPTPillSensorData
+        
         self.ble_device_data = RAPTPillBluetoothDeviceData(
             hass, f"RAPT Pill {self._rapt_device_id}"
         )
@@ -67,7 +73,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         )
         
         # Current sensor data from BLE
-        self._current_ble_data: RAPTPillSensorData | None = None
+        self._current_ble_data: Any = None
         
     async def _async_update_data(self) -> RAPTBrewingData:
         """Update data from integrated BLE device."""
@@ -90,7 +96,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         except Exception as err:
             raise UpdateFailed(f"Error updating RAPT brewing data: {err}") from err
     
-    def get_current_ble_data(self) -> RAPTPillSensorData | None:
+    def get_current_ble_data(self) -> Any:
         """Get current BLE sensor data."""
         return self._current_ble_data
     
@@ -99,7 +105,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         service_info = self.ble_device_data.get_last_service_info()
         return service_info.rssi if service_info else None
     
-    async def _update_current_session_ble(self, ble_data: RAPTPillSensorData) -> None:
+    async def _update_current_session_ble(self, ble_data: Any) -> None:
         """Update current session with new BLE data."""
         if not self.data.current_session:
             return
@@ -161,7 +167,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                     gravity_diff = recent_points[-1].gravity - recent_points[0].gravity
                     session.fermentation_rate = gravity_diff / time_diff
     
-    async def _check_alerts_ble(self, ble_data: RAPTPillSensorData) -> None:
+    async def _check_alerts_ble(self, ble_data: Any) -> None:
         """Check for brewing alerts using BLE data."""
         if not self.data.current_session:
             return

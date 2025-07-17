@@ -7,12 +7,11 @@ from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_registry import async_get
 
 from .const import DOMAIN
-from .coordinator import RAPTBrewingCoordinator
 
 if TYPE_CHECKING:
+    from .coordinator import RAPTBrewingCoordinator
     from .data import RAPTBrewingData
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON, Platform.SELECT]
@@ -27,6 +26,9 @@ RAPTBrewingConfigEntry = ConfigEntry
 async def async_setup_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) -> bool:
     """Set up RAPT Brewing from a config entry."""
     try:
+        # Import coordinator here to avoid blocking imports
+        from .coordinator import RAPTBrewingCoordinator
+        
         coordinator = RAPTBrewingCoordinator(hass, entry)
         
         # Start the BLE coordinator first
