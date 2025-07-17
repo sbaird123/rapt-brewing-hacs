@@ -36,7 +36,7 @@ cards:
   - type: entities
     title: Brewing Targets
     entities:
-      - entity: number.rapt_brewing_original_gravity
+      - entity: sensor.rapt_brewing_original_gravity
         name: Original Gravity
       - entity: number.rapt_brewing_target_gravity
         name: Target Gravity
@@ -177,7 +177,7 @@ cards:
 #       - type: entities
 #         title: Targets
 #         entities:
-#           - number.rapt_brewing_original_gravity
+#           - sensor.rapt_brewing_original_gravity
 #           - number.rapt_brewing_target_gravity
 #         show_header_toggle: false
 #       - type: entities
@@ -224,7 +224,7 @@ cards:
 #   - type: entities
 #     title: Brewing Setup
 #     entities:
-#       - number.rapt_brewing_original_gravity
+#       - sensor.rapt_brewing_original_gravity
 #       - number.rapt_brewing_target_gravity
 #     show_header_toggle: false
 #
