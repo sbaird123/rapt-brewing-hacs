@@ -27,26 +27,25 @@ cards:
         name: Delete Session
     show_header_toggle: false
 
-  - type: horizontal-stack
-    cards:
-      - type: entities
-        title: Gravity
-        entities:
-          - entity: sensor.rapt_brewing_session_manager_original_gravity
-            name: Original
-          - entity: sensor.rapt_brewing_session_manager_current_gravity
-            name: Current
-          - entity: number.rapt_brewing_session_manager_target_gravity
-            name: Target
-        show_header_toggle: false
-      - type: entities
-        title: Temperature
-        entities:
-          - entity: sensor.rapt_brewing_session_manager_current_temperature
-            name: Current
-          - entity: number.rapt_brewing_session_manager_target_temperature
-            name: Target
-        show_header_toggle: false
+  - type: entities
+    title: Gravity
+    entities:
+      - entity: sensor.rapt_brewing_session_manager_original_gravity
+        name: Original
+      - entity: sensor.rapt_brewing_session_manager_current_gravity
+        name: Current
+      - entity: number.rapt_brewing_session_manager_target_gravity
+        name: Target
+    show_header_toggle: false
+
+  - type: entities
+    title: Temperature
+    entities:
+      - entity: sensor.rapt_brewing_session_manager_current_temperature
+        name: Current
+      - entity: number.rapt_brewing_session_manager_target_temperature
+        name: Target
+    show_header_toggle: false
 
   - type: entities
     title: Fermentation Progress
