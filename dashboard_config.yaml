@@ -10,59 +10,59 @@ cards:
   - type: entities
     title: Session Control
     entities:
-      - entity: text.rapt_brewing_session_name
+      - entity: text.rapt_brewing_session_manager_session_name
         name: Session Name
-      - entity: button.rapt_brewing_start_session
+      - entity: button.rapt_brewing_session_manager_start_session
         name: Start New Session
-      - entity: button.rapt_brewing_delete_session
+      - entity: button.rapt_brewing_session_manager_delete_session
         name: Delete Session
 
   # Current Readings Card
   - type: entities
     title: Current Readings
     entities:
-      - entity: sensor.rapt_brewing_current_gravity
+      - entity: sensor.rapt_brewing_session_manager_current_gravity
         name: Current Gravity
-      - entity: sensor.rapt_brewing_current_temperature
+      - entity: sensor.rapt_brewing_session_manager_current_temperature
         name: Current Temperature
-      - entity: sensor.rapt_brewing_battery_level
+      - entity: sensor.rapt_brewing_session_manager_rapt_pill_battery
         name: Battery Level
-      - entity: sensor.rapt_brewing_signal_strength
+      - entity: sensor.rapt_brewing_session_manager_rapt_pill_signal
         name: Signal Strength
-      - entity: sensor.rapt_brewing_last_reading_time
+      - entity: sensor.rapt_brewing_session_manager_last_reading_time
         name: Last Reading
 
   # Brewing Targets Card
   - type: entities
     title: Brewing Targets
     entities:
-      - entity: sensor.rapt_brewing_original_gravity
+      - entity: sensor.rapt_brewing_session_manager_original_gravity
         name: Original Gravity
-      - entity: number.rapt_brewing_target_gravity
+      - entity: number.rapt_brewing_session_manager_target_gravity
         name: Target Gravity
-      - entity: number.rapt_brewing_target_temperature
+      - entity: number.rapt_brewing_session_manager_target_temperature
         name: Target Temperature
 
   # Fermentation Progress Card
   - type: entities
     title: Fermentation Progress
     entities:
-      - entity: sensor.rapt_brewing_alcohol_percentage
+      - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
         name: Alcohol %
-      - entity: sensor.rapt_brewing_attenuation
+      - entity: sensor.rapt_brewing_session_manager_attenuation
         name: Attenuation %
-      - entity: sensor.rapt_brewing_fermentation_rate
+      - entity: sensor.rapt_brewing_session_manager_fermentation_rate
         name: Fermentation Rate
-      - entity: sensor.rapt_brewing_session_duration
+      - entity: sensor.rapt_brewing_session_manager_session_duration
         name: Session Duration (hours)
 
   # Alerts Card
   - type: entities
     title: Alerts & Notifications
     entities:
-      - entity: sensor.rapt_brewing_active_alerts
+      - entity: sensor.rapt_brewing_session_manager_active_alerts
         name: Active Alerts
-      - entity: button.rapt_brewing_clear_alerts
+      - entity: button.rapt_brewing_session_manager_clear_alerts
         name: Clear Alerts
 
 
@@ -70,9 +70,9 @@ cards:
   - type: history-graph
     title: Gravity Over Time
     entities:
-      - entity: sensor.rapt_brewing_current_gravity
+      - entity: sensor.rapt_brewing_session_manager_current_gravity
         name: Current Gravity
-      - entity: sensor.rapt_brewing_target_gravity
+      - entity: sensor.rapt_brewing_session_manager_target_gravity
         name: Target Gravity
     hours_to_show: 168  # 7 days
     refresh_interval: 300  # 5 minutes
@@ -81,9 +81,9 @@ cards:
   - type: history-graph
     title: Temperature Over Time
     entities:
-      - entity: sensor.rapt_brewing_current_temperature
+      - entity: sensor.rapt_brewing_session_manager_current_temperature
         name: Current Temperature
-      - entity: sensor.rapt_brewing_target_temperature
+      - entity: sensor.rapt_brewing_session_manager_target_temperature
         name: Target Temperature
     hours_to_show: 168  # 7 days
     refresh_interval: 300  # 5 minutes
@@ -92,11 +92,11 @@ cards:
   - type: history-graph
     title: Fermentation Progress
     entities:
-      - entity: sensor.rapt_brewing_alcohol_percentage
+      - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
         name: Alcohol %
-      - entity: sensor.rapt_brewing_attenuation
+      - entity: sensor.rapt_brewing_session_manager_attenuation
         name: Attenuation %
-      - entity: sensor.rapt_brewing_fermentation_rate
+      - entity: sensor.rapt_brewing_session_manager_fermentation_rate
         name: Fermentation Rate
     hours_to_show: 168  # 7 days
     refresh_interval: 300  # 5 minutes
@@ -107,7 +107,7 @@ cards:
       - type: custom:mini-graph-card
         name: Gravity Trend
         entities:
-          - sensor.rapt_brewing_current_gravity
+          - sensor.rapt_brewing_session_manager_current_gravity
         hours_to_show: 48
         points_per_hour: 4
         line_width: 2
@@ -128,7 +128,7 @@ cards:
       - type: custom:mini-graph-card
         name: Temperature Trend
         entities:
-          - sensor.rapt_brewing_current_temperature
+          - sensor.rapt_brewing_session_manager_current_temperature
         hours_to_show: 48
         points_per_hour: 4
         line_width: 2
