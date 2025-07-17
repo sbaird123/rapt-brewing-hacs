@@ -31,13 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) 
         
         coordinator = RAPTBrewingCoordinator(hass, entry)
         
-        # Start the BLE coordinator first (might not be async)
-        if hasattr(coordinator.ble_coordinator, 'async_start'):
-            await coordinator.ble_coordinator.async_start()
-        elif hasattr(coordinator.ble_coordinator, 'start'):
-            coordinator.ble_coordinator.start()
-        
-        # Then do the first refresh
+        # Do the first refresh (BLE coordinator will start automatically)
         await coordinator.async_config_entry_first_refresh()
         
         entry.runtime_data = coordinator
@@ -51,13 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) 
 
 async def async_unload_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) -> bool:
     """Unload a config entry."""
-    # Stop the BLE coordinator
-    coordinator = entry.runtime_data
-    if hasattr(coordinator.ble_coordinator, 'async_stop'):
-        await coordinator.ble_coordinator.async_stop()
-    elif hasattr(coordinator.ble_coordinator, 'stop'):
-        coordinator.ble_coordinator.stop()
-    
+    # BLE coordinator will stop automatically when platforms are unloaded
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

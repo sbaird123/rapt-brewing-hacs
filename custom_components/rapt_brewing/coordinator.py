@@ -72,8 +72,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             hass, 
             _LOGGER, 
             self._rapt_device_id, 
-            self.ble_device_data,
-            lambda service_info: self.ble_device_data._async_handle_bluetooth_data_update(service_info)
+            self.ble_device_data
         )
         
         # Current sensor data from BLE
