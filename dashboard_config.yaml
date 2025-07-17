@@ -158,48 +158,85 @@ cards:
 # ==========================================
 # MOBILE DASHBOARD (Mobile-friendly layout)
 # ==========================================
-# Uncomment the lines below to use this layout instead
+# Use this layout for mobile devices instead of the desktop version above
 #
 # type: vertical-stack
 # cards:
 #   - type: glance
 #     title: Quick Status
 #     entities:
-#       - entity: sensor.rapt_brewing_current_gravity
+#       - entity: sensor.rapt_brewing_session_manager_current_gravity
 #         name: Gravity
-#       - entity: sensor.rapt_brewing_current_temperature
+#       - entity: sensor.rapt_brewing_session_manager_current_temperature
 #         name: Temp
-#       - entity: sensor.rapt_brewing_battery_level
+#       - entity: sensor.rapt_brewing_session_manager_rapt_pill_battery
 #         name: Battery
-#     columns: 2
+#     columns: 3
 #
 #   - type: entities
 #     title: Session Control
 #     entities:
-#       - text.rapt_brewing_session_name
-#       - button.rapt_brewing_start_session
-#       - button.rapt_brewing_delete_session
+#       - entity: sensor.rapt_brewing_session_manager_session_name
+#         name: Session Name
+#       - entity: text.rapt_brewing_session_manager_session_name
+#         name: Edit Session Name
+#       - entity: button.rapt_brewing_session_manager_start_new_session
+#         name: Start New Session
+#       - entity: button.rapt_brewing_session_manager_delete_current_session
+#         name: Delete Session
+#     show_header_toggle: false
+#
+#   - type: horizontal-stack
+#     cards:
+#       - type: entities
+#         title: Gravity
+#         entities:
+#           - entity: sensor.rapt_brewing_session_manager_original_gravity
+#             name: Original
+#           - entity: sensor.rapt_brewing_session_manager_current_gravity
+#             name: Current
+#           - entity: number.rapt_brewing_session_manager_target_gravity
+#             name: Target
+#         show_header_toggle: false
+#       - type: entities
+#         title: Temperature
+#         entities:
+#           - entity: sensor.rapt_brewing_session_manager_current_temperature
+#             name: Current
+#           - entity: number.rapt_brewing_session_manager_target_temperature
+#             name: Target
+#         show_header_toggle: false
+#
+#   - type: entities
+#     title: Fermentation Progress
+#     entities:
+#       - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
+#         name: Alcohol %
+#       - entity: sensor.rapt_brewing_session_manager_attenuation
+#         name: Attenuation %
+#       - entity: sensor.rapt_brewing_session_manager_fermentation_rate
+#         name: Fermentation Rate
 #     show_header_toggle: false
 #
 #   - type: entities
-#     title: Brewing Setup
+#     title: Device & Alerts
 #     entities:
-#       - sensor.rapt_brewing_original_gravity
-#       - number.rapt_brewing_target_gravity
-#     show_header_toggle: false
-#
-#   - type: entities
-#     title: Progress
-#     entities:
-#       - sensor.rapt_brewing_alcohol_percentage
-#       - sensor.rapt_brewing_attenuation
-#       - sensor.rapt_brewing_fermentation_rate
+#       - entity: sensor.rapt_brewing_session_manager_rapt_pill_signal
+#         name: Signal
+#       - entity: sensor.rapt_brewing_session_manager_last_reading_time
+#         name: Last Reading
+#       - entity: sensor.rapt_brewing_session_manager_active_alerts
+#         name: Active Alerts
+#       - entity: button.rapt_brewing_session_manager_clear_alerts
+#         name: Clear Alerts
 #     show_header_toggle: false
 #
 #   - type: history-graph
 #     title: Gravity & Temperature
 #     entities:
-#       - sensor.rapt_brewing_current_gravity
-#       - sensor.rapt_brewing_current_temperature
+#       - entity: sensor.rapt_brewing_session_manager_current_gravity
+#         name: Gravity
+#       - entity: sensor.rapt_brewing_session_manager_current_temperature
+#         name: Temperature
 #     hours_to_show: 48
 #     refresh_interval: 300
