@@ -1,9 +1,9 @@
 # RAPT Brewing Session Manager
 
-[![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
-[![License][license-shield]](LICENSE)
-[![hacs][hacsbadge]][hacs]
+[![GitHub Release](https://img.shields.io/github/v/release/sbaird123/rapt-brewing-hacs?style=for-the-badge)](https://github.com/sbaird123/rapt-brewing-hacs/releases)
+[![GitHub Activity](https://img.shields.io/github/commit-activity/y/sbaird123/rapt-brewing-hacs?style=for-the-badge)](https://github.com/sbaird123/rapt-brewing-hacs/commits/main)
+[![License](https://img.shields.io/github/license/sbaird123/rapt-brewing-hacs?style=for-the-badge)](LICENSE)
+[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 A comprehensive Home Assistant integration for managing brewing sessions with RAPT Pill hydrometers.
 
@@ -238,13 +238,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-[releases-shield]: https://img.shields.io/github/release/sbaird123/rapt-brewing-hacs.svg?style=for-the-badge
-[releases]: https://github.com/sbaird123/rapt-brewing-hacs/releases
-[commits-shield]: https://img.shields.io/github/commit-activity/y/sbaird123/rapt-brewing-hacs.svg?style=for-the-badge
-[commits]: https://github.com/sbaird123/rapt-brewing-hacs/commits/main
-[license-shield]: https://img.shields.io/github/license/sbaird123/rapt-brewing-hacs.svg?style=for-the-badge
-[hacs]: https://github.com/hacs/integration
-[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
-[issues]: https://github.com/sbaird123/rapt-brewing-hacs/issues
-[discussions]: https://github.com/sbaird123/rapt-brewing-hacs/discussions
-[community]: https://community.home-assistant.io/
+**Issues & Support:**
+- [GitHub Issues](https://github.com/sbaird123/rapt-brewing-hacs/issues)
+- [GitHub Discussions](https://github.com/sbaird123/rapt-brewing-hacs/discussions)
+- [Home Assistant Community](https://community.home-assistant.io/)
