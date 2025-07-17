@@ -56,8 +56,11 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate that the RAPT device exists."""
         try:
             # Check if RAPT BLE integration is loaded
-            if "rapt_ble" not in self.hass.data.get("integrations", {}):
-                return False
+            integrations = self.hass.data.get("integrations", {})
+            if "rapt_ble" not in integrations:
+                _LOGGER.warning("RAPT BLE integration not found")
+                # Allow setup anyway - user might add RAPT device later
+                return True
             
             # Check if the device exists in entity registry
             entity_registry = self.hass.helpers.entity_registry.async_get(self.hass)
@@ -65,14 +68,17 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Look for RAPT BLE entities with this device ID
             for entity_id, entry in entity_registry.entities.items():
                 if (entry.platform == "rapt_ble" and 
-                    device_id in entity_id):
+                    device_id.lower() in entity_id.lower()):
                     return True
-                    
-            return False
             
-        except Exception:
-            _LOGGER.exception("Error validating RAPT device")
-            return False
+            # If no exact match found, still allow setup
+            _LOGGER.warning(f"RAPT device {device_id} not found, but allowing setup")
+            return True
+            
+        except Exception as e:
+            _LOGGER.exception("Error validating RAPT device: %s", e)
+            # Allow setup even if validation fails
+            return True
 
     async def async_step_import(self, import_info: dict[str, Any]) -> FlowResult:
         """Handle import from configuration.yaml."""

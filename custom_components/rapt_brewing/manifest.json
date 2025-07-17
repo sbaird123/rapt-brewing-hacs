@@ -1,7 +1,8 @@
 {
   "domain": "rapt_brewing",
   "name": "RAPT Brewing Session Manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "config_flow": true,
   "requirements": [
     "rapt-ble>=0.1.2"
   ],
