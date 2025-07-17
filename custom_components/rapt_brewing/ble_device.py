@@ -82,41 +82,44 @@ class RAPTPillBLEParser:
     
     def _parse_metrics_data(self, data: bytes) -> RAPTPillSensorData | None:
         """Parse metrics data from RAPT manufacturer data."""
-        if len(data) < 23:
+        if len(data) < 21:
             _LOGGER.warning("RAPT metrics data too short: %d bytes", len(data))
             return None
         
         try:
-            # Parse according to format: ">B6sHfhhhh"
-            # B = unsigned char (1 byte) - data type/version
-            # 6s = 6 bytes string - device identifier  
-            # H = unsigned short (2 bytes) - sequence/flags
-            # f = float (4 bytes) - temperature in Kelvin
-            # h = signed short (2 bytes) - gravity * 1000
-            # h = signed short (2 bytes) - battery * 256
-            # h = signed short (2 bytes) - accelerometer X * 16
-            # h = signed short (2 bytes) - accelerometer Y * 16
-            # h = signed short (2 bytes) - accelerometer Z * 16
+            # Parse according to the actual RAPT format (21 bytes minimum)
+            # Based on rapt-ble library: ">BB6sHfhhhh" 
+            # B = data type/version (1 byte)
+            # B = flags or sequence (1 byte) 
+            # 6s = device identifier (6 bytes)
+            # H = sequence number (2 bytes)
+            # f = temperature in Celsius (4 bytes)
+            # h = gravity * 1000 (2 bytes)
+            # h = battery level (2 bytes) 
+            # h = accelerometer X (2 bytes)
+            # h = accelerometer Y (2 bytes)
             
-            unpacked = struct.unpack(">B6sHfhhhh", data[:23])
+            _LOGGER.debug("Parsing RAPT data: %d bytes: %s", len(data), data.hex())
+            
+            # Use 21 bytes for the core format
+            unpacked = struct.unpack(">BB6sHfhhhh", data[:21])
             
             data_type = unpacked[0]
-            device_id = unpacked[1]
-            sequence = unpacked[2]
-            temp_kelvin = unpacked[3]
-            gravity_raw = unpacked[4]
-            battery_raw = unpacked[5]
-            accel_x_raw = unpacked[6]
-            accel_y_raw = unpacked[7]
-            accel_z_raw = unpacked[8]
+            flags = unpacked[1]  
+            device_id = unpacked[2]
+            sequence = unpacked[3]
+            temperature = unpacked[4]  # Already in Celsius
+            gravity_raw = unpacked[5]
+            battery_raw = unpacked[6]
+            accel_x_raw = unpacked[7]
+            accel_y_raw = unpacked[8]
             
             # Convert raw values to meaningful units
-            temperature = temp_kelvin - 273.15  # Kelvin to Celsius
             gravity = gravity_raw / 1000.0 if gravity_raw != 0 else None
-            battery = int(battery_raw / 256.0) if battery_raw >= 0 else None
+            battery = int(battery_raw) if battery_raw >= 0 else None
             accel_x = accel_x_raw / 16.0
-            accel_y = accel_y_raw / 16.0  
-            accel_z = accel_z_raw / 16.0
+            accel_y = accel_y_raw / 16.0
+            accel_z = 0.0  # We only have X and Y in this format
             
             # Validate reasonable ranges
             if temperature < -50 or temperature > 100:
@@ -144,13 +147,12 @@ class RAPTPillBLEParser:
             
             _LOGGER.debug(
                 "Parsed RAPT data - Temp: %.1f°C, Gravity: %.3f, Battery: %d%%, "
-                "Accel: (%.2f, %.2f, %.2f)",
+                "Accel: (%.2f, %.2f)",
                 temperature or 0,
                 gravity or 0,
                 battery or 0,
                 accel_x,
                 accel_y,
-                accel_z,
             )
             
             return sensor_data
