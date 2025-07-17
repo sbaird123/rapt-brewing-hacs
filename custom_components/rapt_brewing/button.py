@@ -38,6 +38,11 @@ BUTTON_TYPES: tuple[ButtonEntityDescription, ...] = (
         name="Resume Brewing Session",
         icon="mdi:play-circle",
     ),
+    ButtonEntityDescription(
+        key="delete_session",
+        name="Delete Current Session",
+        icon="mdi:delete-circle",
+    ),
 )
 
 
@@ -84,6 +89,8 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             await self._pause_session()
         elif self.entity_description.key == "resume_session":
             await self._resume_session()
+        elif self.entity_description.key == "delete_session":
+            await self._delete_session()
 
     async def _start_session(self) -> None:
         """Start a new brewing session."""
@@ -94,8 +101,16 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             
         # This would typically open a dialog or form
         # For now, we'll create a default session
+        # Create a better default name with timestamp
+        from datetime import datetime
+        session_name = f"Brew {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        
+        # Check if there's a custom session name from text input
+        # This is a simplified approach - in a real implementation you'd want
+        # to get the text input value, but for now we'll use the default
+        
         session_id = await self.coordinator.start_session(
-            name=f"Brewing Session {len(self.coordinator.data.sessions) + 1}",
+            name=session_name,
             recipe=None,
             original_gravity=None,
             target_gravity=None,
@@ -131,6 +146,17 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             self.coordinator.data.current_session.state = "active"
             await self.coordinator._save_data()
             await self.coordinator.async_request_refresh()
+    
+    async def _delete_session(self) -> None:
+        """Delete the current brewing session."""
+        if self.coordinator.data.current_session:
+            session_id = self.coordinator.data.current_session.id
+            session_name = self.coordinator.data.current_session.name
+            await self.coordinator.delete_session(session_id)
+            _LOGGER.warning("RAPT BUTTON: Deleted session: %s (%s)", session_name, session_id)
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.warning("RAPT BUTTON: Cannot delete session, no current session")
 
     @property
     def available(self) -> bool:

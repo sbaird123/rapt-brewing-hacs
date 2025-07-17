@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from .coordinator import RAPTBrewingCoordinator
     from .data import RAPTBrewingData
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON, Platform.SELECT]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON, Platform.SELECT, Platform.TEXT]
 
 _LOGGER = logging.getLogger(__name__)
 
