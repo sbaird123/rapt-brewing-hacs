@@ -9,7 +9,7 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 
 ![RAPT Brewing Dashboard](docs/dashboard-screenshot.png)
 
-*Live dashboard showing a low-alcohol beer fermentation in progress with real-time gravity, temperature, and fermentation metrics.*
+*Live dashboard showing a low-alcohol beer fermentation in progress with real-time gravity, temperature, and fermentation metrics. Optimized for both desktop and mobile devices.*
 
 ## Features
 
@@ -123,7 +123,7 @@ The dashboard shows:
 4. Click **Edit Dashboard** → **Add Card** → **Manual**
 5. Paste the YAML and click **Save**
 
-The file includes both desktop and mobile-friendly layouts.
+The file includes both desktop and mobile-friendly layouts. The mobile layout provides a clean, scrollable interface optimized for phone screens.
 
 ## Available Sensors
 
