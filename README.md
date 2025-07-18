@@ -306,9 +306,9 @@ cards:
 - **Low Battery**: Below 20%
 
 ### Notification Configuration
-Alerts automatically create Home Assistant persistent notifications in the UI. For external notifications, you have two options:
+Alerts automatically create Home Assistant persistent notifications in the UI. For external notifications:
 
-#### Option 1: Built-in Notification Service (Recommended)
+#### ✅ Built-in Notification Service (Recommended - Easy!)
 First, ensure you have a notification service configured (mobile app, Telegram, email, etc.). Then:
 
 1. Go to **Settings** → **Devices & Services** → **RAPT Brewing Session Manager**
@@ -316,7 +316,7 @@ First, ensure you have a notification service configured (mobile app, Telegram, 
 3. Select your notification service from the dropdown (e.g., `notify.mobile_app_your_phone`)
 4. Click **Submit**
 
-The integration will automatically send alerts to your chosen notification service with rich data including alert type, session name, and brewing status.
+**Done!** The integration automatically sends alerts to your chosen notification service with rich data including alert type, session name, and brewing status.
 
 **Popular notification services to set up first:**
 - **Mobile App**: Install Home Assistant Companion app
@@ -325,54 +325,27 @@ The integration will automatically send alerts to your chosen notification servi
 - **Discord**: Configure `notify.discord`
 - **Ntfy.sh**: Configure `notify.rest` for ntfy.sh (see below)
 
-#### Option 2: Custom Automations
-For more control, create automations that trigger on alert changes.
+#### ⚠️ Custom Automations (Advanced Users Only)
+The built-in notification service is much easier, but if you need custom automation logic, you can create automations that trigger on alert changes. This requires writing YAML automations and is more complex to maintain.
 
-**Example: Mobile App Notifications**
+**Example: Custom Alert Automation**
 ```yaml
 automation:
-  - alias: "RAPT Brewing Mobile Notifications"
+  - alias: "RAPT Brewing Custom Alert"
     trigger:
       - platform: state
         entity_id: sensor.rapt_brewing_session_manager_active_alerts
-        to: 
-          - "1"
-          - "2"
-          - "3"
     condition:
       - condition: template
         value_template: "{{ states('sensor.rapt_brewing_session_manager_active_alerts') | int > 0 }}"
     action:
-      - service: notify.mobile_app_your_phone_name
+      - service: notify.your_notification_service
         data:
           title: "🍺 RAPT Brewing Alert"
           message: "{{ state_attr('sensor.rapt_brewing_session_manager_active_alerts', 'alerts')[0].message }}"
 ```
 
-**Example: Telegram Notifications**
-```yaml
-# First configure Telegram in configuration.yaml
-notify:
-  - name: telegram_brewing
-    platform: telegram
-    chat_id: YOUR_CHAT_ID
-
-# Then create automation
-automation:
-  - alias: "RAPT Brewing Telegram Notifications"
-    trigger:
-      - platform: state
-        entity_id: sensor.rapt_brewing_session_manager_active_alerts
-        to: 
-          - "1"
-          - "2"
-          - "3"
-    action:
-      - service: notify.telegram_brewing
-        data:
-          title: "🍺 Brewing Alert"
-          message: "{{ state_attr('sensor.rapt_brewing_session_manager_active_alerts', 'alerts')[0].message }}"
-```
+**Why use the built-in service instead?** No YAML editing, no template debugging, no maintenance. Just click configure and select your service!
 
 ### Ntfy.sh Configuration
 
