@@ -161,10 +161,13 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             session.current_gravity = ble_data.gravity
             
             # Auto-set original gravity if not set and this is the first gravity reading
+            # Use temperature-corrected gravity for more accurate OG measurement
             if session.original_gravity is None and len(session.data_points) <= 1:
-                session.original_gravity = ble_data.gravity
-                _LOGGER.warning("RAPT AUTO-SET: Original gravity set to %.3f for session: %s", 
-                               ble_data.gravity, session.name)
+                # Apply temperature correction to the raw gravity reading
+                corrected_og = self._apply_temp_correction_to_gravity(ble_data.gravity, ble_data.temperature)
+                session.original_gravity = corrected_og if corrected_og else ble_data.gravity
+                _LOGGER.warning("RAPT AUTO-SET: Original gravity set to %.3f (temp corrected from %.3f) for session: %s", 
+                               session.original_gravity, ble_data.gravity, session.name)
                 
                 # Also set a reasonable default target gravity if not set
                 # Typical beer fermentation: OG - 0.020 to 0.030 points
@@ -267,13 +270,20 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         if not data_point.gravity or not data_point.temperature:
             return None
             
+        return self._apply_temp_correction_to_gravity(data_point.gravity, data_point.temperature)
+    
+    def _apply_temp_correction_to_gravity(self, gravity: float, temperature: float) -> float | None:
+        """Apply temperature correction to gravity and temperature values."""
+        if gravity is None or temperature is None:
+            return None
+            
         # Temperature correction formula (calibrated at 20°C)
         calibration_temp = 20.0  # °C
         temp_correction_factor = 0.00130  # per °C
         
-        temp_difference = data_point.temperature - calibration_temp
+        temp_difference = temperature - calibration_temp
         correction = temp_difference * temp_correction_factor
-        corrected_gravity = data_point.gravity + correction
+        corrected_gravity = gravity + correction
         
         return corrected_gravity
     
