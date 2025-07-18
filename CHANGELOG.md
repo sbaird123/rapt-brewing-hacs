@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2025-07-18
+
+### 🔧 **Bug Fixes**
+- Enhanced BLE parsing error logging to identify short packet issues
+- Added detailed logging for legacy format packets to diagnose 9-byte packet truncation
+- Repository cleanup: removed unnecessary setup files and redundant documentation
+
+### 🧹 **Maintenance**
+- Removed obsolete setup guides and reference files
+- Cleaned up repository structure for better HACS compatibility
+
 ## [2.0.0] - 2025-01-16
 
 ### ⚡ **MAJOR UPDATE: Integrated Bluetooth Support**

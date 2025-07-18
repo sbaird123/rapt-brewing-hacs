@@ -286,15 +286,23 @@ class RAPTPillBLEParser:
     
     def _parse_legacy_format(self, data: bytes) -> RAPTPillSensorData | None:
         """Parse legacy format for backwards compatibility."""
+        _LOGGER.debug("Legacy format: received %d bytes: %s", len(data), data.hex())
+        
         if len(data) < 23:
-            _LOGGER.warning("Legacy format data too short: %d bytes", len(data))
+            _LOGGER.warning("Legacy format data too short: %d bytes (need 23), data: %s", len(data), data.hex())
+            # Log the payload after PT prefix to understand what's being sent
+            if len(data) > 2:
+                payload = data[2:]
+                _LOGGER.info("Short packet payload (%d bytes): %s", len(payload), payload.hex())
             return None
         
         try:
             # Skip "PT" prefix and use old parsing logic
             payload = data[2:]
+            _LOGGER.debug("Legacy format: payload %d bytes: %s", len(payload), payload.hex())
             
             if len(payload) >= 21:
+                _LOGGER.debug("Legacy format: attempting struct unpack on 21 bytes: %s", payload[:21].hex())
                 unpacked = struct.unpack(">B6sHfhhhh", payload[:21])
                 
                 version = unpacked[0]
