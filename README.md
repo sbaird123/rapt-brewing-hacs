@@ -104,8 +104,6 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 
 The integration provides a comprehensive brewing dashboard with real-time monitoring:
 
-![RAPT Brewing Dashboard](docs/dashboard-screenshot.png)
-
 The dashboard shows:
 - **Session Control**: Start/stop sessions, edit names, and delete sessions
 - **Gravity Readings**: Raw and temperature-corrected gravity values
