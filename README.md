@@ -430,14 +430,6 @@ logger:
     custom_components.rapt_brewing: debug
 ```
 
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
 ## Support
 
 - **Issues**: [GitHub Issues][issues]
