@@ -202,14 +202,6 @@ First, ensure you have a notification service configured (mobile app, Telegram, 
 - Check target gravity values
 - Ensure sufficient data points for rate calculations
 
-### Debug Logging
-Add to `configuration.yaml`:
-```yaml
-logger:
-  logs:
-    custom_components.rapt_brewing: debug
-```
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
