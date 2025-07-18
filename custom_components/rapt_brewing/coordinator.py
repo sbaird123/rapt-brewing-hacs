@@ -111,6 +111,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             # Get current BLE sensor data
             self._current_ble_data = self.ble_device_data.get_last_sensor_data()
             
+            _LOGGER.warning("RAPT COORDINATOR: Update - BLE data: %s", 
+                           self._current_ble_data.to_dict() if self._current_ble_data else "None")
+            
             if self._current_ble_data and self.data.current_session:
                 # Update current session with new BLE data
                 await self._update_current_session_ble(self._current_ble_data)
@@ -120,6 +123,10 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 
                 # Save data to storage
                 await self._save_data()
+            elif not self._current_ble_data:
+                _LOGGER.warning("RAPT COORDINATOR: No BLE data available")
+            elif not self.data.current_session:
+                _LOGGER.warning("RAPT COORDINATOR: No current session")
             
             return self.data
             
