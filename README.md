@@ -428,12 +428,6 @@ logger:
     custom_components.rapt_brewing: debug
 ```
 
-## Support
-
-- **Issues**: [GitHub Issues][issues]
-- **Discussions**: [GitHub Discussions][discussions]
-- **Home Assistant Community**: [Community Forum][community]
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
