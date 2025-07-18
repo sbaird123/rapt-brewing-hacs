@@ -76,25 +76,25 @@ class RAPTPillBLEParser:
         """Parse BLE advertisement data."""
         manufacturer_data = service_info.manufacturer_data
         
-        _LOGGER.warning("RAPT PARSER: Received manufacturer data: %s", 
+        _LOGGER.debug("RAPT PARSER: Received manufacturer data: %s", 
                        {k: v.hex() for k, v in manufacturer_data.items()})
         
         # Check for RAPT manufacturer data
         if RAPT_MANUFACTURER_ID in manufacturer_data:
             data = manufacturer_data[RAPT_MANUFACTURER_ID]
-            _LOGGER.warning("RAPT PARSER: RAPT data length=%d, hex=%s", len(data), data.hex())
+            _LOGGER.debug("RAPT PARSER: RAPT data length=%d, hex=%s", len(data), data.hex())
             if len(data) >= 2 and list(data[:2]) == RAPT_DATA_START:
-                _LOGGER.warning("RAPT PARSER: Parsing metrics data with PT prefix")
+                _LOGGER.debug("RAPT PARSER: Parsing metrics data with PT prefix")
                 parsed_data = self._parse_metrics_data(data)
                 if parsed_data:
                     self._last_data = parsed_data
-                    _LOGGER.warning("RAPT PARSER: Successfully parsed data: temp=%.2f, gravity=%.4f", 
+                    _LOGGER.debug("RAPT PARSER: Successfully parsed data: temp=%.2f, gravity=%.4f", 
                                    parsed_data.temperature or 0, parsed_data.gravity or 0)
                     return parsed_data
                 else:
                     _LOGGER.warning("RAPT PARSER: Failed to parse metrics data")
             else:
-                _LOGGER.warning("RAPT PARSER: Data doesn't start with PT prefix: %s", data[:2].hex())
+                _LOGGER.debug("RAPT PARSER: Data doesn't start with PT prefix: %s", data[:2].hex())
         
         # Check for KegLand manufacturer data  
         if KEGLAND_MANUFACTURER_ID in manufacturer_data:
@@ -353,9 +353,9 @@ class RAPTPillBluetoothDeviceData(PassiveBluetoothDataProcessor):
         self, service_info: BluetoothServiceInfoBleak
     ) -> PassiveBluetoothDataUpdate:
         """Handle Bluetooth data updates."""
-        # Log every BLE update we receive - GUARANTEED WARNING LOG
-        _LOGGER.warning("!!! RAPT BLE UPDATE RECEIVED !!! Device: %s, Manufacturers: %s", 
-                       service_info.address, list(service_info.manufacturer_data.keys()))
+        # Log every BLE update we receive - useful for connection monitoring
+        _LOGGER.debug("RAPT BLE UPDATE: Device: %s, Manufacturers: %s", 
+                     service_info.address, list(service_info.manufacturer_data.keys()))
         
         self._last_service_info = service_info
         

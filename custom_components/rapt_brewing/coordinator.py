@@ -111,7 +111,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             # Get current BLE sensor data
             self._current_ble_data = self.ble_device_data.get_last_sensor_data()
             
-            _LOGGER.warning("RAPT COORDINATOR: Update - BLE data: %s", 
+            _LOGGER.debug("RAPT COORDINATOR: Update - BLE data: %s", 
                            self._current_ble_data.to_dict() if self._current_ble_data else "None")
             
             if self._current_ble_data and self.data.current_session:
@@ -124,9 +124,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 # Save data to storage
                 await self._save_data()
             elif not self._current_ble_data:
-                _LOGGER.warning("RAPT COORDINATOR: No BLE data available")
+                _LOGGER.debug("RAPT COORDINATOR: No BLE data available")
             elif not self.data.current_session:
-                _LOGGER.warning("RAPT COORDINATOR: No current session")
+                _LOGGER.debug("RAPT COORDINATOR: No current session")
             
             return self.data
             
@@ -220,7 +220,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 # Cap at reasonable maximum (20% ABV)
                 session.alcohol_percentage = min(session.alcohol_percentage, 20.0)
                 
-                _LOGGER.warning("RAPT CALC: Alcohol %.1f%% (OG=%.3f, CG_corrected=%.3f, factor=%.2f)", 
+                _LOGGER.debug("RAPT CALC: Alcohol %.1f%% (OG=%.3f, CG_corrected=%.3f, factor=%.2f)", 
                              session.alcohol_percentage, session.original_gravity, corrected_gravity, correction_factor)
         else:
             _LOGGER.warning("RAPT CALC: Cannot calculate alcohol - OG=%s, CG_corrected=%s", 
@@ -234,15 +234,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 (session.original_gravity - 1.000) * 100
             )
             
-            # CRITICAL DEBUG: Log attenuation calculation details
-            _LOGGER.warning("RAPT ATTENUATION CALC: OG=%.4f, CG_raw=%.4f, CG_corrected=%.4f, temp=%.2f°C", 
-                           session.original_gravity, session.current_gravity or 0, corrected_gravity, session.current_temperature or 0)
-            _LOGGER.warning("RAPT ATTENUATION CALC: Formula: (%.4f - %.4f) / (%.4f - 1.000) * 100 = %.2f%%", 
-                           session.original_gravity, corrected_gravity, session.original_gravity, apparent_attenuation)
-            
             session.attenuation = max(0.0, min(100.0, apparent_attenuation))  # Clamp to 0-100%
-            _LOGGER.warning("RAPT ATTENUATION RESULT: %.1f%% (clamped from %.2f%%)", 
-                           session.attenuation, apparent_attenuation)
+            _LOGGER.debug("RAPT CALC: Attenuation %.1f%% (OG=%.3f, CG_corrected=%.3f)", 
+                         session.attenuation, session.original_gravity, corrected_gravity)
         else:
             _LOGGER.warning("RAPT CALC: Cannot calculate attenuation - OG=%s, CG_corrected=%s", 
                            session.original_gravity, corrected_gravity)
@@ -283,9 +277,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                            session.current_gravity, session.current_temperature, correction)
             return session.current_gravity
         
-        # DEBUG: Log temperature correction details
-        _LOGGER.warning("RAPT TEMP CORRECTION: Raw=%.4f, Temp=%.2f°C, Correction=%.4f, Corrected=%.4f", 
-                       session.current_gravity, session.current_temperature, correction, corrected_gravity)
+        _LOGGER.debug("RAPT TEMP CORRECTION: Raw=%.4f, Temp=%.2f°C, Correction=%.4f, Corrected=%.4f", 
+                     session.current_gravity, session.current_temperature, correction, corrected_gravity)
         
         return corrected_gravity
     

@@ -5,21 +5,21 @@
 [![License](https://img.shields.io/github/license/sbaird123/rapt-brewing-hacs?style=for-the-badge)](LICENSE)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-A comprehensive Home Assistant integration for managing brewing sessions with RAPT Pill hydrometers.
+A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydrometers via Bluetooth.
 
 ## Features
 
-### 🍺 Complete Brewing Session Management
-- **Session Control**: Start new session (auto-stops existing), delete, and rename
-- **Multi-Session Support**: Track multiple brewing sessions with historical data
+### 🍺 Single Session Brewing Management
+- **Simple Session Control**: Start new session, delete, and rename
 - **Auto-Detection**: Automatically sets original gravity from first reading
 - **Target Setting**: Set target gravity and temperature for calculations
+- **Historical Data**: Stores all session data for analysis
 
 ### 📊 Advanced Brewing Calculations
-- **Automatic ABV**: Real-time alcohol percentage calculation using `(OG - FG) × 131.25`
+- **Automatic ABV**: Real-time alcohol percentage calculation with temperature correction
 - **Attenuation Tracking**: Monitor apparent attenuation percentage
 - **Fermentation Rate**: Track gravity change over time (SG points per hour)
-- **Progress Monitoring**: Visual progress indicators and trend analysis
+- **Temperature Correction**: Accurate gravity readings compensated for temperature
 
 ### 🔔 Smart Brewing Alerts
 - **Stuck Fermentation**: Automatically detects when fermentation stalls
@@ -27,10 +27,10 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 - **Completion Detection**: Notification when target gravity is reached
 - **Device Alerts**: Low battery and connectivity warnings
 
-### 📈 Rich Data Monitoring
-- **11 Essential Sensors**: Complete brewing data coverage
+### 📈 Comprehensive Data Monitoring
+- **20+ Sensors**: Complete brewing data coverage including accelerometer and fermentation activity
 - **Real-time Updates**: Live gravity, temperature, and device status
-- **Historical Analysis**: Long-term data storage and trend analysis
+- **BLE Integration**: Direct Bluetooth Low Energy communication with RAPT Pill
 - **Dashboard Ready**: Complete Lovelace configuration included
 
 ## Installation
@@ -93,8 +93,8 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 - **Alert System**: Automatic alerts for stuck fermentation, temperature issues, and low battery
 
 ### Managing Sessions
-- **Simple Session Control**: Start new session (auto-stops existing), delete, and rename
-- **Session History**: Track multiple brewing sessions with historical data
+- **Single Session Focus**: One active session at a time for simplicity
+- **Session History**: Historical data stored for completed sessions
 - **Session Naming**: Customize session names during brewing
 - **Target Setting**: Set original gravity, target gravity, and target temperature
 
@@ -118,27 +118,46 @@ cards:
 
 ## Available Sensors
 
+### Core Brewing Sensors
 | Sensor | Description | Unit |
 |--------|-------------|------|
 | `session_name` | Current session name | - |
 | `original_gravity` | Starting gravity | SG |
-| `current_gravity` | Current specific gravity | SG |
+| `current_gravity` | Current specific gravity (raw) | SG |
+| `current_gravity_temp_corrected` | Temperature-corrected gravity | SG |
 | `target_gravity` | Target final gravity | SG |
 | `alcohol_percentage` | Calculated alcohol by volume | % |
 | `attenuation` | Apparent attenuation | % |
 | `fermentation_rate` | Gravity change rate | SG/hr |
 | `current_temperature` | Current temperature | °C |
 | `target_temperature` | Target fermentation temperature | °C |
+
+### Device & Status Sensors
+| Sensor | Description | Unit |
+|--------|-------------|------|
 | `battery_level` | RAPT Pill battery level | % |
 | `signal_strength` | BLE signal strength | dBm |
 | `session_duration` | Total session time | hours |
 | `last_reading_time` | Last sensor reading timestamp | timestamp |
 | `active_alerts` | Number of active alerts | count |
 
+### Advanced Sensors
+| Sensor | Description | Unit |
+|--------|-------------|------|
+| `gravity_velocity` | Official RAPT gravity velocity | SG/day |
+| `accelerometer_x` | X-axis acceleration | g |
+| `accelerometer_y` | Y-axis acceleration | g |
+| `accelerometer_z` | Z-axis acceleration | g |
+| `device_stability` | Device stability classification | - |
+| `fermentation_activity` | Fermentation activity level | - |
+| `firmware_version` | RAPT Pill firmware version | - |
+| `device_type` | Device type information | - |
+| `data_format_version` | BLE data format version | - |
+
 ## Available Controls
 
 ### Buttons
-- **Start New Session**: Creates a new session (auto-stops any existing session)
+- **Start New Session**: Creates a new session (replaces any existing session)
 - **Delete Current Session**: Removes the current session
 - **Clear Alerts**: Acknowledges and clears active alerts
 
