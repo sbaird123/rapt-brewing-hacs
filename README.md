@@ -438,14 +438,6 @@ logger:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
-
-- [RAPT (KegLand)](https://rapt.io) for excellent brewing hardware
-- Home Assistant community for integration support
-- All contributors and beta testers
-
----
-
 **Issues & Support:**
 - [GitHub Issues](https://github.com/sbaird123/rapt-brewing-hacs/issues)
 - [GitHub Discussions](https://github.com/sbaird123/rapt-brewing-hacs/discussions)
