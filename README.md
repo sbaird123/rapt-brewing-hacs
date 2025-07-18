@@ -179,14 +179,143 @@ cards:
 - **Low Battery**: Below 20%
 
 ### Notification Configuration
-Alerts automatically create Home Assistant persistent notifications. Configure additional notification platforms in `configuration.yaml`:
+Alerts automatically create Home Assistant persistent notifications in the UI. For external notifications, you have two options:
+
+#### Option 1: Built-in Notification Service (Recommended)
+First, ensure you have a notification service configured (mobile app, Telegram, email, etc.). Then:
+
+1. Go to **Settings** → **Devices & Services** → **RAPT Brewing Session Manager**
+2. Click **Configure**
+3. Select your notification service from the dropdown (e.g., `notify.mobile_app_your_phone`)
+4. Click **Submit**
+
+The integration will automatically send alerts to your chosen notification service with rich data including alert type, session name, and brewing status.
+
+**Popular notification services to set up first:**
+- **Mobile App**: Install Home Assistant Companion app
+- **Telegram**: Configure `telegram_bot` and `notify.telegram`
+- **Email**: Set up `notify.smtp`
+- **Discord**: Configure `notify.discord`
+- **Ntfy.sh**: Configure `notify.rest` for ntfy.sh (see below)
+
+#### Option 2: Custom Automations
+For more control, create automations that trigger on alert changes.
+
+**Example: Mobile App Notifications**
+```yaml
+automation:
+  - alias: "RAPT Brewing Mobile Notifications"
+    trigger:
+      - platform: state
+        entity_id: sensor.rapt_brewing_session_manager_active_alerts
+        to: 
+          - "1"
+          - "2"
+          - "3"
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.rapt_brewing_session_manager_active_alerts') | int > 0 }}"
+    action:
+      - service: notify.mobile_app_your_phone_name
+        data:
+          title: "🍺 RAPT Brewing Alert"
+          message: "{{ state_attr('sensor.rapt_brewing_session_manager_active_alerts', 'alerts')[0].message }}"
+```
+
+**Example: Telegram Notifications**
+```yaml
+# First configure Telegram in configuration.yaml
+notify:
+  - name: telegram_brewing
+    platform: telegram
+    chat_id: YOUR_CHAT_ID
+
+# Then create automation
+automation:
+  - alias: "RAPT Brewing Telegram Notifications"
+    trigger:
+      - platform: state
+        entity_id: sensor.rapt_brewing_session_manager_active_alerts
+        to: 
+          - "1"
+          - "2"
+          - "3"
+    action:
+      - service: notify.telegram_brewing
+        data:
+          title: "🍺 Brewing Alert"
+          message: "{{ state_attr('sensor.rapt_brewing_session_manager_active_alerts', 'alerts')[0].message }}"
+```
+
+### Ntfy.sh Configuration
+
+[Ntfy.sh](https://ntfy.sh) is a simple pub-sub notification service. Here's how to set it up:
+
+#### Step 1: Configure ntfy.sh in Home Assistant
+
+Add to your `configuration.yaml`:
 
 ```yaml
 notify:
-  - name: brewing_alerts
-    platform: telegram  # or pushbullet, email, etc.
-    chat_id: YOUR_CHAT_ID
-    api_key: YOUR_API_KEY
+  - name: ntfy_brewing
+    platform: rest
+    resource: https://ntfy.sh/your-unique-topic-name
+    method: POST_JSON
+    headers:
+      Title: "🍺 RAPT Brewing Alert"
+      Priority: "default"
+      Tags: "beer,brewing"
+    message_param_name: message
+    title_param_name: title
+```
+
+Replace `your-unique-topic-name` with a unique topic name (e.g., `rapt-brewing-alerts-yourname123`).
+
+#### Step 2: Configure in RAPT Integration
+
+1. Restart Home Assistant
+2. Go to **Settings** → **Devices & Services** → **RAPT Brewing Session Manager**
+3. Click **Configure**
+4. Select `notify.ntfy_brewing` from the dropdown
+5. Click **Submit**
+
+#### Step 3: Subscribe to notifications
+
+**On your phone:**
+1. Install the ntfy app ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) | [iOS](https://apps.apple.com/us/app/ntfy/id1625396347))
+2. Subscribe to your topic: `your-unique-topic-name`
+3. You'll receive push notifications for all brewing alerts
+
+**On your computer:**
+- Visit `https://ntfy.sh/your-unique-topic-name` in your browser
+- Or use the ntfy CLI: `ntfy subscribe your-unique-topic-name`
+
+#### Advanced ntfy.sh Configuration
+
+For more features like icons, actions, and priorities:
+
+```yaml
+notify:
+  - name: ntfy_brewing_advanced
+    platform: rest
+    resource: https://ntfy.sh/your-unique-topic-name
+    method: POST_JSON
+    headers:
+      Priority: "high"  # low, default, high, max
+      Tags: "beer,🍺,brewing"
+      Icon: "https://raw.githubusercontent.com/sbaird123/rapt-brewing-hacs/main/icon.png"
+    message_param_name: message
+    title_param_name: title
+    data:
+      click: "https://your-home-assistant.com/lovelace/brewing"  # Open brewing dashboard
+      actions: |
+        [
+          {
+            "action": "view", 
+            "label": "View Dashboard", 
+            "url": "https://your-home-assistant.com/lovelace/brewing"
+          }
+        ]
 ```
 
 ## Troubleshooting

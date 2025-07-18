@@ -55,6 +55,7 @@ CONF_TARGET_TEMPERATURE: Final = "target_temperature"
 CONF_FERMENTATION_ALERTS: Final = "fermentation_alerts"
 CONF_TEMPERATURE_ALERTS: Final = "temperature_alerts"
 CONF_ALERT_THRESHOLDS: Final = "alert_thresholds"
+CONF_NOTIFICATION_SERVICE: Final = "notification_service"
 
 # Default alert thresholds
 DEFAULT_STUCK_FERMENTATION_HOURS: Final = 48

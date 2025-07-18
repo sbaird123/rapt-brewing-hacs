@@ -10,7 +10,7 @@ from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, CONF_RAPT_DEVICE_ID
+from .const import DOMAIN, CONF_RAPT_DEVICE_ID, CONF_NOTIFICATION_SERVICE
 
 # BLE constants for discovery
 RAPT_MANUFACTURER_ID = 16722  # 0x4152 - "RA" from RAPT
@@ -30,6 +30,11 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for RAPT Brewing."""
 
     VERSION = 1
+    
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return RAPTBrewingOptionsFlow(config_entry)
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -150,3 +155,53 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_import(self, import_info: dict[str, Any]) -> FlowResult:
         """Handle import from configuration.yaml."""
         return await self.async_step_user(import_info)
+
+
+class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for RAPT Brewing."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        # Get all available notification services
+        notification_services = await self._get_notification_services()
+        
+        # Create options schema
+        options_schema = vol.Schema({
+            vol.Optional(
+                CONF_NOTIFICATION_SERVICE,
+                default=self.config_entry.options.get(CONF_NOTIFICATION_SERVICE, "")
+            ): vol.In([""] + notification_services)
+        })
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema,
+            description_placeholders={
+                "notification_services": ", ".join(notification_services) if notification_services else "None found"
+            }
+        )
+
+    async def _get_notification_services(self) -> list[str]:
+        """Get list of available notification services."""
+        try:
+            # Get all notification services from Home Assistant
+            services = self.hass.services.async_services()
+            notify_services = []
+            
+            if "notify" in services:
+                for service_name in services["notify"]:
+                    if service_name != "notify":  # Skip the generic notify service
+                        notify_services.append(f"notify.{service_name}")
+            
+            return sorted(notify_services)
+        except Exception:
+            return []
