@@ -7,6 +7,10 @@
 
 A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydrometers via Bluetooth.
 
+![RAPT Brewing Dashboard](docs/dashboard-screenshot.png)
+
+*Live dashboard showing a low-alcohol beer fermentation in progress with real-time gravity, temperature, and fermentation metrics.*
+
 ## Features
 
 ### 🍺 Single Session Brewing Management
@@ -100,7 +104,22 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 
 ## Dashboard Configuration
 
-Copy the contents of `dashboard_config.yaml` to create a comprehensive brewing dashboard:
+The integration provides a comprehensive brewing dashboard with real-time monitoring:
+
+![RAPT Brewing Dashboard](docs/dashboard-screenshot.png)
+
+The dashboard shows:
+- **Session Control**: Start/stop sessions, edit names, and delete sessions
+- **Gravity Readings**: Raw and temperature-corrected gravity values
+- **Temperature Monitoring**: Current and target temperatures
+- **Fermentation Progress**: Alcohol percentage, attenuation, and fermentation activity
+- **Device Status**: Battery level, signal strength, and connection status
+- **Alerts**: Active alerts with clear button
+- **Historical Charts**: Gravity trends over time showing fermentation progress
+
+### Setup Instructions
+
+Copy the contents of `dashboard_config.yaml` to create this dashboard:
 
 ```yaml
 # Add to your Lovelace dashboard
