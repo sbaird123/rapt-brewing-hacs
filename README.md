@@ -115,15 +115,13 @@ The dashboard shows:
 
 ### Setup Instructions
 
-**📱 [View Dashboard Configuration →](dashboard_config.yaml)**
+**📱 [Desktop Dashboard →](dashboard_config.yaml)** | **📱 [Mobile Dashboard →](dashboard_config_mobile.yaml)**
 
-1. Open the [dashboard_config.yaml](dashboard_config.yaml) file
+1. Choose your layout and open the appropriate YAML file
 2. Copy the complete YAML configuration
 3. In Home Assistant: **Settings** → **Dashboards** → **Your Dashboard**
 4. Click **Edit Dashboard** → **Add Card** → **Manual**
 5. Paste the YAML and click **Save**
-
-The file includes both desktop and mobile-friendly layouts. The mobile layout provides a clean, scrollable interface optimized for phone screens.
 
 ## Available Sensors
 
