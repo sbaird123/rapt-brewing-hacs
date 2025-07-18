@@ -58,6 +58,8 @@ cards:
         name: Attenuation %
       - entity: sensor.rapt_brewing_session_manager_fermentation_rate
         name: Fermentation Rate
+      - entity: sensor.rapt_brewing_session_manager_fermentation_activity
+        name: Fermentation Activity
     show_header_toggle: false
 
   - type: entities
@@ -82,5 +84,21 @@ cards:
         name: Gravity (Temp Corrected)
       - entity: sensor.rapt_brewing_session_manager_current_temperature
         name: Temperature
+    hours_to_show: 48
+    refresh_interval: 300
+
+  - type: history-graph
+    title: Alcohol Content
+    entities:
+      - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
+        name: Alcohol %
+    hours_to_show: 48
+    refresh_interval: 300
+
+  - type: history-graph
+    title: Attenuation Progress
+    entities:
+      - entity: sensor.rapt_brewing_session_manager_attenuation
+        name: Attenuation %
     hours_to_show: 48
     refresh_interval: 300

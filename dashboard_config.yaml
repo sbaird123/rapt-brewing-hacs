@@ -54,6 +54,8 @@ cards:
             name: Attenuation %
           - entity: sensor.rapt_brewing_session_manager_fermentation_rate
             name: Fermentation Rate
+          - entity: sensor.rapt_brewing_session_manager_fermentation_activity
+            name: Fermentation Activity
           - entity: sensor.rapt_brewing_session_manager_session_duration
             name: Session Duration
         show_header_toggle: false
@@ -100,14 +102,18 @@ cards:
     refresh_interval: 300
 
   - type: history-graph
-    title: Fermentation Progress
+    title: Alcohol Content Over Time
     entities:
       - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
         name: Alcohol %
+    hours_to_show: 168
+    refresh_interval: 300
+
+  - type: history-graph
+    title: Attenuation Progress
+    entities:
       - entity: sensor.rapt_brewing_session_manager_attenuation
         name: Attenuation %
-      - entity: sensor.rapt_brewing_session_manager_fermentation_rate
-        name: Fermentation Rate
     hours_to_show: 168
     refresh_interval: 300
 

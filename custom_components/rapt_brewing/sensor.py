@@ -128,6 +128,60 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         icon="mdi:clock",
         device_class=SensorDeviceClass.TIMESTAMP,
     ),
+    # New sensors from comprehensive BLE parsing
+    SensorEntityDescription(
+        key="gravity_velocity",
+        name="Gravity Velocity",
+        icon="mdi:speedometer",
+        native_unit_of_measurement="SG/day",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="accelerometer_x",
+        name="Accelerometer X",
+        icon="mdi:axis-x-arrow",
+        native_unit_of_measurement="g",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="accelerometer_y",
+        name="Accelerometer Y",
+        icon="mdi:axis-y-arrow",
+        native_unit_of_measurement="g",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="accelerometer_z",
+        name="Accelerometer Z",
+        icon="mdi:axis-z-arrow",
+        native_unit_of_measurement="g",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="device_stability",
+        name="Device Stability",
+        icon="mdi:stability",
+    ),
+    SensorEntityDescription(
+        key="fermentation_activity",
+        name="Fermentation Activity",
+        icon="mdi:bottle-wine",
+    ),
+    SensorEntityDescription(
+        key="firmware_version",
+        name="Firmware Version",
+        icon="mdi:chip",
+    ),
+    SensorEntityDescription(
+        key="device_type",
+        name="Device Type",
+        icon="mdi:devices",
+    ),
+    SensorEntityDescription(
+        key="data_format_version",
+        name="Data Format Version",
+        icon="mdi:file-code",
+    ),
 )
 
 
@@ -254,6 +308,46 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
                 latest_point = self.coordinator.data.current_session.data_points[-1]
                 return latest_point.timestamp
             return None
+        # New sensors from comprehensive BLE parsing
+        elif self.entity_description.key == "gravity_velocity":
+            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
+                latest_point = self.coordinator.data.current_session.data_points[-1]
+                return getattr(latest_point, 'gravity_velocity', None)
+            return None
+        elif self.entity_description.key == "accelerometer_x":
+            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
+                latest_point = self.coordinator.data.current_session.data_points[-1]
+                return getattr(latest_point, 'accelerometer_x', None)
+            return None
+        elif self.entity_description.key == "accelerometer_y":
+            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
+                latest_point = self.coordinator.data.current_session.data_points[-1]
+                return getattr(latest_point, 'accelerometer_y', None)
+            return None
+        elif self.entity_description.key == "accelerometer_z":
+            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
+                latest_point = self.coordinator.data.current_session.data_points[-1]
+                return getattr(latest_point, 'accelerometer_z', None)
+            return None
+        elif self.entity_description.key == "device_stability":
+            return self._calculate_device_stability()
+        elif self.entity_description.key == "fermentation_activity":
+            return self._calculate_fermentation_activity()
+        elif self.entity_description.key == "firmware_version":
+            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
+                latest_point = self.coordinator.data.current_session.data_points[-1]
+                return getattr(latest_point, 'firmware_version', None)
+            return None
+        elif self.entity_description.key == "device_type":
+            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
+                latest_point = self.coordinator.data.current_session.data_points[-1]
+                return getattr(latest_point, 'device_type', None)
+            return None
+        elif self.entity_description.key == "data_format_version":
+            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
+                latest_point = self.coordinator.data.current_session.data_points[-1]
+                return getattr(latest_point, 'data_format_version', None)
+            return None
         
         return None
 
@@ -326,6 +420,141 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         corrected_gravity = current_gravity + correction
         
         return round(corrected_gravity, 4)
+    
+    def _calculate_device_stability(self) -> str | None:
+        """Calculate device stability based on accelerometer data."""
+        if not self.coordinator.data.current_session or not self.coordinator.data.current_session.data_points:
+            return None
+            
+        # Get recent data points (last 5 readings)
+        recent_points = self.coordinator.data.current_session.data_points[-5:]
+        
+        # Check if we have accelerometer data
+        accel_points = [
+            point for point in recent_points 
+            if hasattr(point, 'accelerometer_x') and 
+               hasattr(point, 'accelerometer_y') and 
+               hasattr(point, 'accelerometer_z') and
+               point.accelerometer_x is not None and
+               point.accelerometer_y is not None and
+               point.accelerometer_z is not None
+        ]
+        
+        if len(accel_points) < 2:
+            return "Unknown"
+        
+        # Calculate standard deviation of accelerometer readings
+        import statistics
+        
+        x_values = [point.accelerometer_x for point in accel_points]
+        y_values = [point.accelerometer_y for point in accel_points]
+        z_values = [point.accelerometer_z for point in accel_points]
+        
+        try:
+            x_std = statistics.stdev(x_values) if len(x_values) > 1 else 0
+            y_std = statistics.stdev(y_values) if len(y_values) > 1 else 0
+            z_std = statistics.stdev(z_values) if len(z_values) > 1 else 0
+            
+            # Calculate overall stability metric
+            stability_metric = (x_std + y_std + z_std) / 3
+            
+            # Classify stability
+            if stability_metric < 0.05:
+                return "Very Stable"
+            elif stability_metric < 0.15:
+                return "Stable"
+            elif stability_metric < 0.35:
+                return "Slightly Unstable"
+            else:
+                return "Unstable"
+                
+        except Exception:
+            return "Unknown"
+    
+    def _calculate_fermentation_activity(self) -> str | None:
+        """Calculate fermentation activity based on gravity velocity and accelerometer data."""
+        if not self.coordinator.data.current_session or not self.coordinator.data.current_session.data_points:
+            return None
+            
+        recent_points = self.coordinator.data.current_session.data_points[-10:]  # Last 10 points
+        
+        # Get gravity velocity from latest point (if available from v2 format)
+        latest_point = self.coordinator.data.current_session.data_points[-1]
+        gravity_velocity = getattr(latest_point, 'gravity_velocity', None)
+        
+        # Get our calculated fermentation rate as backup
+        fermentation_rate = self.coordinator.data.current_session.fermentation_rate
+        
+        # Get accelerometer variation (CO2 bubbles cause vibration)
+        accel_variation = self._get_accelerometer_variation(recent_points)
+        
+        # Classify fermentation activity
+        if gravity_velocity is not None:
+            # Use official gravity velocity from RAPT (points per day)
+            velocity_abs = abs(gravity_velocity)
+            
+            if velocity_abs > 5.0:  # Very fast gravity change
+                if accel_variation and accel_variation > 0.2:
+                    return "Vigorous"
+                else:
+                    return "Active"
+            elif velocity_abs > 2.0:  # Moderate gravity change
+                if accel_variation and accel_variation > 0.15:
+                    return "Active"
+                else:
+                    return "Moderate"
+            elif velocity_abs > 0.5:  # Slow gravity change
+                return "Slow"
+            else:
+                return "Inactive"
+        
+        elif fermentation_rate is not None:
+            # Fallback to our calculated fermentation rate (SG/hr)
+            rate_per_day = abs(fermentation_rate * 24)
+            
+            if rate_per_day > 0.005:  # ~5 points per day
+                if accel_variation and accel_variation > 0.2:
+                    return "Vigorous"
+                else:
+                    return "Active"
+            elif rate_per_day > 0.002:  # ~2 points per day
+                return "Moderate"
+            elif rate_per_day > 0.0005:  # ~0.5 points per day
+                return "Slow"
+            else:
+                return "Inactive"
+        
+        return "Unknown"
+    
+    def _get_accelerometer_variation(self, points: list) -> float | None:
+        """Calculate accelerometer variation as an indicator of CO2 activity."""
+        accel_points = [
+            point for point in points 
+            if hasattr(point, 'accelerometer_x') and 
+               hasattr(point, 'accelerometer_y') and 
+               hasattr(point, 'accelerometer_z') and
+               point.accelerometer_x is not None and
+               point.accelerometer_y is not None and
+               point.accelerometer_z is not None
+        ]
+        
+        if len(accel_points) < 3:
+            return None
+        
+        try:
+            import statistics
+            
+            # Calculate magnitude of each accelerometer reading
+            magnitudes = [
+                (point.accelerometer_x**2 + point.accelerometer_y**2 + point.accelerometer_z**2)**0.5
+                for point in accel_points
+            ]
+            
+            # Return standard deviation of magnitudes
+            return statistics.stdev(magnitudes) if len(magnitudes) > 1 else 0
+            
+        except Exception:
+            return None
 
     @property
     def available(self) -> bool:
