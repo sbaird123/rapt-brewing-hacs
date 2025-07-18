@@ -13,11 +13,10 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 
 ## Features
 
-### 🍺 Single Session Brewing Management
+### 🍺 Brewing Session Monitoring
 - **Simple Session Control**: Start new session, delete, and rename
 - **Auto-Detection**: Automatically sets original gravity from first reading
 - **Target Setting**: Set target gravity and temperature for calculations
-- **Historical Data**: Stores all session data for analysis
 
 ### 📊 Advanced Brewing Calculations
 - **Automatic ABV**: Real-time alcohol percentage calculation with temperature correction
@@ -29,7 +28,7 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 - **Stuck Fermentation**: Automatically detects when fermentation stalls
 - **Temperature Monitoring**: High/low temperature warnings
 - **Completion Detection**: Notification when target gravity is reached
-- **Device Alerts**: Low battery and connectivity warnings
+- **Low Battery**: Alerts when RAPT Pill battery drops below 20%
 
 ### 📈 Comprehensive Data Monitoring
 - **20+ Sensors**: Complete brewing data coverage including accelerometer and fermentation activity
@@ -96,9 +95,8 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 - **Historical Charts**: Gravity and temperature trends over time
 - **Alert System**: Automatic alerts for stuck fermentation, temperature issues, and low battery
 
-### Managing Sessions
+### Session Controls
 - **Single Session Focus**: One active session at a time for simplicity
-- **Session History**: Historical data stored for completed sessions
 - **Session Naming**: Customize session names during brewing
 - **Target Setting**: Set original gravity, target gravity, and target temperature
 
@@ -347,8 +345,8 @@ notify:
 - Review Home Assistant logs for errors
 
 **No data updates**
-- Ensure RAPT Pill is connected and transmitting
-- Check Bluetooth connectivity and range (ESPHome BLE proxies recommended)
+- Ensure RAPT Pill is powered on and broadcasting BLE advertisements
+- Check Bluetooth range (ESPHome BLE proxies recommended for better range)
 - Verify integration is receiving BLE advertisements in logs
 
 **Incorrect calculations**
