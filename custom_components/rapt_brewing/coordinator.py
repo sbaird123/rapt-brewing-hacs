@@ -185,41 +185,97 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
     
     def _calculate_derived_values(self, session: BrewingSession) -> None:
         """Calculate derived values for the session."""
-        # Calculate alcohol percentage
-        if session.original_gravity and session.current_gravity:
-            session.alcohol_percentage = (
-                (session.original_gravity - session.current_gravity) * 131.25
-            )
-            _LOGGER.debug("RAPT CALC: Alcohol %%.1f%% (OG=%.3f, CG=%.3f)", 
-                         session.alcohol_percentage, session.original_gravity, session.current_gravity)
-        else:
-            _LOGGER.warning("RAPT CALC: Cannot calculate alcohol - OG=%s, CG=%s", 
-                           session.original_gravity, session.current_gravity)
+        # Get temperature-corrected gravity for more accurate calculations
+        corrected_gravity = self._get_temperature_corrected_gravity(session)
         
-        # Calculate attenuation
-        if session.original_gravity and session.current_gravity and session.target_gravity:
+        # Calculate alcohol percentage using temperature-corrected gravity with improved accuracy
+        if session.original_gravity and corrected_gravity:
+            # Validate gravity values are reasonable
+            if corrected_gravity >= session.original_gravity:
+                session.alcohol_percentage = 0.0  # Fermentation hasn't started
+                _LOGGER.debug("RAPT CALC: Alcohol 0.0%% - fermentation not started (CG >= OG)")
+            else:
+                gravity_drop = session.original_gravity - corrected_gravity
+                
+                # Apply correction factor based on original gravity for better accuracy
+                if session.original_gravity > 1.060:
+                    correction_factor = 1.05  # High gravity beers
+                elif session.original_gravity > 1.050:
+                    correction_factor = 1.02  # Medium gravity beers
+                else:
+                    correction_factor = 1.0   # Low gravity beers
+                
+                session.alcohol_percentage = gravity_drop * 131.25 * correction_factor
+                
+                # Cap at reasonable maximum (20% ABV)
+                session.alcohol_percentage = min(session.alcohol_percentage, 20.0)
+                
+                _LOGGER.debug("RAPT CALC: Alcohol %.1f%% (OG=%.3f, CG_corrected=%.3f, factor=%.2f)", 
+                             session.alcohol_percentage, session.original_gravity, corrected_gravity, correction_factor)
+        else:
+            _LOGGER.warning("RAPT CALC: Cannot calculate alcohol - OG=%s, CG_corrected=%s", 
+                           session.original_gravity, corrected_gravity)
+        
+        # Calculate attenuation using temperature-corrected gravity (FIXED FORMULA)
+        if session.original_gravity and corrected_gravity:
+            # Proper attenuation formula: (OG - CG) / (OG - 1.000) * 100
             apparent_attenuation = (
-                (session.original_gravity - session.current_gravity) /
-                (session.original_gravity - session.target_gravity) * 100
+                (session.original_gravity - corrected_gravity) /
+                (session.original_gravity - 1.000) * 100
             )
-            session.attenuation = apparent_attenuation
-            _LOGGER.debug("RAPT CALC: Attenuation %.1f%% (OG=%.3f, CG=%.3f, TG=%.3f)", 
-                         session.attenuation, session.original_gravity, session.current_gravity, session.target_gravity)
+            session.attenuation = max(0.0, min(100.0, apparent_attenuation))  # Clamp to 0-100%
+            _LOGGER.debug("RAPT CALC: Attenuation %.1f%% (OG=%.3f, CG_corrected=%.3f)", 
+                         session.attenuation, session.original_gravity, corrected_gravity)
         else:
-            _LOGGER.warning("RAPT CALC: Cannot calculate attenuation - OG=%s, CG=%s, TG=%s", 
-                           session.original_gravity, session.current_gravity, session.target_gravity)
+            _LOGGER.warning("RAPT CALC: Cannot calculate attenuation - OG=%s, CG_corrected=%s", 
+                           session.original_gravity, corrected_gravity)
         
-        # Calculate fermentation rate (gravity change per hour)
+        # Calculate fermentation rate using temperature-corrected gravity (FIXED)
         if len(session.data_points) >= 2:
             recent_points = [
                 dp for dp in session.data_points[-24:]  # Last 24 data points
-                if dp.gravity is not None
+                if dp.gravity is not None and dp.temperature is not None
             ]
             if len(recent_points) >= 2:
                 time_diff = (recent_points[-1].timestamp - recent_points[0].timestamp).total_seconds() / 3600
                 if time_diff > 0:
-                    gravity_diff = recent_points[-1].gravity - recent_points[0].gravity
-                    session.fermentation_rate = gravity_diff / time_diff
+                    # Apply temperature correction to both points
+                    first_corrected = self._apply_temp_correction_to_point(recent_points[0])
+                    last_corrected = self._apply_temp_correction_to_point(recent_points[-1])
+                    
+                    if first_corrected is not None and last_corrected is not None:
+                        gravity_diff = last_corrected - first_corrected
+                        session.fermentation_rate = gravity_diff / time_diff
+    
+    def _get_temperature_corrected_gravity(self, session: BrewingSession) -> float | None:
+        """Get temperature-corrected gravity for accurate calculations."""
+        if not session.current_gravity or not session.current_temperature:
+            return None
+            
+        # Temperature correction formula (calibrated at 20°C)
+        calibration_temp = 20.0  # °C
+        temp_correction_factor = 0.00130  # per °C
+        
+        temp_difference = session.current_temperature - calibration_temp
+        correction = temp_difference * temp_correction_factor
+        corrected_gravity = session.current_gravity + correction
+        
+        return corrected_gravity
+    
+    def _apply_temp_correction_to_point(self, data_point) -> float | None:
+        """Apply temperature correction to a single data point."""
+        if not data_point.gravity or not data_point.temperature:
+            return None
+            
+        # Temperature correction formula (calibrated at 20°C)
+        calibration_temp = 20.0  # °C
+        temp_correction_factor = 0.00130  # per °C
+        
+        temp_difference = data_point.temperature - calibration_temp
+        correction = temp_difference * temp_correction_factor
+        corrected_gravity = data_point.gravity + correction
+        
+        return corrected_gravity
     
     async def _check_alerts_ble(self, ble_data: Any) -> None:
         """Check for brewing alerts using BLE data."""

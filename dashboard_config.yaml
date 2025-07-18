@@ -28,7 +28,7 @@ cards:
             name: Original Gravity
           - entity: sensor.rapt_brewing_session_manager_current_gravity
             name: Current Gravity (Raw)
-          - entity: sensor.rapt_brewing_session_manager_current_gravity_corrected
+          - entity: sensor.rapt_brewing_session_manager_current_gravity_temp_corrected
             name: Current Gravity (Temp Corrected)
           - entity: number.rapt_brewing_session_manager_target_gravity
             name: Target Gravity
@@ -84,7 +84,7 @@ cards:
     entities:
       - entity: sensor.rapt_brewing_session_manager_current_gravity
         name: Current Gravity (Raw)
-      - entity: sensor.rapt_brewing_session_manager_current_gravity_corrected
+      - entity: sensor.rapt_brewing_session_manager_current_gravity_temp_corrected
         name: Current Gravity (Temp Corrected)
       - entity: sensor.rapt_brewing_session_manager_target_gravity
         name: Target Gravity

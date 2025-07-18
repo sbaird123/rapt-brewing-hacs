@@ -45,7 +45,7 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
-        key="current_gravity_corrected",
+        key="current_gravity_temp_corrected",
         name="Current Gravity (Temp Corrected)",
         icon="mdi:speedometer-slow",
         state_class=SensorStateClass.MEASUREMENT,
@@ -235,7 +235,7 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
                 if self.coordinator.data.current_session
                 else None
             )
-        elif self.entity_description.key == "current_gravity_corrected":
+        elif self.entity_description.key == "current_gravity_temp_corrected":
             return (
                 self._calculate_temperature_corrected_gravity()
                 if self.coordinator.data.current_session
@@ -403,12 +403,18 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         Most hydrometers are calibrated at 20°C (68°F).
         """
         if not self.coordinator.data.current_session:
+            _LOGGER.debug("TEMP CORRECTION: No current session")
             return None
             
         current_gravity = self.coordinator.data.current_session.current_gravity
         current_temp = self.coordinator.data.current_session.current_temperature
         
+        _LOGGER.debug("TEMP CORRECTION: Raw gravity=%.4f, temp=%.2f", 
+                     current_gravity or 0, current_temp or 0)
+        
         if current_gravity is None or current_temp is None:
+            _LOGGER.debug("TEMP CORRECTION: Missing data - gravity=%s, temp=%s", 
+                         current_gravity, current_temp)
             return None
             
         # Temperature correction formula (calibrated at 20°C)
@@ -418,6 +424,9 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         temp_difference = current_temp - calibration_temp
         correction = temp_difference * temp_correction_factor
         corrected_gravity = current_gravity + correction
+        
+        _LOGGER.debug("TEMP CORRECTION: Corrected gravity=%.4f (correction=%.4f)", 
+                     corrected_gravity, correction)
         
         return round(corrected_gravity, 4)
     
