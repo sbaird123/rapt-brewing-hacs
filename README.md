@@ -117,21 +117,131 @@ The dashboard shows:
 
 ### Setup Instructions
 
-Copy the contents of `dashboard_config.yaml` to create this dashboard:
+Copy the complete configuration from `dashboard_config.yaml` to create this dashboard:
 
 ```yaml
-# Add to your Lovelace dashboard
-title: RAPT Brewing Dashboard
+# RAPT Brewing Dashboard Configuration
+# Copy this configuration to your Home Assistant Lovelace dashboard
+
+type: vertical-stack
 cards:
-  - type: entities
-    title: Session Control
+  # Top Row - Logically grouped measurements
+  - type: horizontal-stack
+    cards:
+      - type: entities
+        title: Session Control
+        entities:
+          - entity: sensor.rapt_brewing_session_manager_session_name
+            name: Session Name
+          - entity: text.rapt_brewing_session_manager_session_name
+            name: Edit Session Name
+          - entity: button.rapt_brewing_session_manager_start_new_session
+            name: Start New Session
+          - entity: button.rapt_brewing_session_manager_delete_current_session
+            name: Delete Session
+        show_header_toggle: false
+      - type: entities
+        title: Gravity Readings
+        entities:
+          - entity: sensor.rapt_brewing_session_manager_original_gravity
+            name: Original Gravity
+          - entity: sensor.rapt_brewing_session_manager_current_gravity
+            name: Current Gravity (Raw)
+          - entity: sensor.rapt_brewing_session_manager_current_gravity_temp_corrected
+            name: Current Gravity (Temp Corrected)
+          - entity: number.rapt_brewing_session_manager_target_gravity
+            name: Target Gravity
+        show_header_toggle: false
+      - type: entities
+        title: Temperature Readings
+        entities:
+          - entity: sensor.rapt_brewing_session_manager_current_temperature
+            name: Current Temperature
+          - entity: number.rapt_brewing_session_manager_target_temperature
+            name: Target Temperature
+        show_header_toggle: false
+
+  # Second Row - Progress and device info
+  - type: horizontal-stack
+    cards:
+      - type: entities
+        title: Fermentation Progress
+        entities:
+          - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
+            name: Alcohol %
+          - entity: sensor.rapt_brewing_session_manager_attenuation
+            name: Attenuation %
+          - entity: sensor.rapt_brewing_session_manager_fermentation_rate
+            name: Fermentation Rate
+          - entity: sensor.rapt_brewing_session_manager_fermentation_activity
+            name: Fermentation Activity
+          - entity: sensor.rapt_brewing_session_manager_session_duration
+            name: Session Duration
+        show_header_toggle: false
+      - type: entities
+        title: Device Status
+        entities:
+          - entity: sensor.rapt_brewing_session_manager_rapt_pill_battery
+            name: Battery Level
+          - entity: sensor.rapt_brewing_session_manager_rapt_pill_signal
+            name: Signal Strength
+          - entity: sensor.rapt_brewing_session_manager_last_reading_time
+            name: Last Reading
+        show_header_toggle: false
+      - type: entities
+        title: Alerts
+        entities:
+          - entity: sensor.rapt_brewing_session_manager_active_alerts
+            name: Active Alerts
+          - entity: button.rapt_brewing_session_manager_clear_alerts
+            name: Clear Alerts
+        show_header_toggle: false
+
+  # Charts - Full width
+  - type: history-graph
+    title: Gravity Over Time
     entities:
-      - text.rapt_brewing_session_name
-      - sensor.rapt_brewing_session_state
-      - button.rapt_brewing_start_session
-      - button.rapt_brewing_delete_session
-  # ... more configuration available in dashboard_config.yaml
+      - entity: sensor.rapt_brewing_session_manager_current_gravity
+        name: Current Gravity (Raw)
+      - entity: sensor.rapt_brewing_session_manager_current_gravity_temp_corrected
+        name: Current Gravity (Temp Corrected)
+      - entity: sensor.rapt_brewing_session_manager_target_gravity
+        name: Target Gravity
+    hours_to_show: 168
+    refresh_interval: 300
+
+  - type: history-graph
+    title: Temperature Over Time
+    entities:
+      - entity: sensor.rapt_brewing_session_manager_current_temperature
+        name: Current Temperature
+      - entity: sensor.rapt_brewing_session_manager_target_temperature
+        name: Target Temperature
+    hours_to_show: 168
+    refresh_interval: 300
+
+  - type: history-graph
+    title: Alcohol Content Over Time
+    entities:
+      - entity: sensor.rapt_brewing_session_manager_alcohol_percentage
+        name: Alcohol %
+    hours_to_show: 168
+    refresh_interval: 300
+
+  - type: history-graph
+    title: Attenuation Progress
+    entities:
+      - entity: sensor.rapt_brewing_session_manager_attenuation
+        name: Attenuation %
+    hours_to_show: 168
+    refresh_interval: 300
 ```
+
+**How to add to your dashboard:**
+1. In Home Assistant, go to **Settings** → **Dashboards** → **Your Dashboard**
+2. Click **Edit Dashboard** → **Add Card** → **Manual**
+3. Copy and paste the complete YAML above
+4. Click **Save**
 
 ## Available Sensors
 
