@@ -281,21 +281,6 @@ cards:
 | `device_type` | Device type information | - |
 | `data_format_version` | BLE data format version | - |
 
-## Available Controls
-
-### Buttons
-- **Start New Session**: Creates a new session (replaces any existing session)
-- **Delete Current Session**: Removes the current session
-- **Clear Alerts**: Acknowledges and clears active alerts
-
-### Text Inputs
-- **Session Name**: Edit the current session name
-
-### Number Inputs
-- **Original Gravity**: Set starting gravity (1.000-1.200 SG)
-- **Target Gravity**: Set target final gravity (0.990-1.200 SG)
-- **Target Temperature**: Set fermentation temperature (0-50°C)
-
 ## Alerts & Notifications
 
 ### Alert Types
