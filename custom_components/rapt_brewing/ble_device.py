@@ -32,22 +32,34 @@ class RAPTPillSensorData:
     
     temperature: float | None = None
     gravity: float | None = None
+    gravity_velocity: float | None = None
+    gravity_velocity_valid: bool = False
     battery: int | None = None
     signal_strength: int | None = None
     accelerometer_x: float | None = None
     accelerometer_y: float | None = None
     accelerometer_z: float | None = None
+    firmware_version: str | None = None
+    device_type: str | None = None
+    mac_address: str | None = None
+    data_format_version: int | None = None
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "temperature": self.temperature,
             "gravity": self.gravity,
+            "gravity_velocity": self.gravity_velocity,
+            "gravity_velocity_valid": self.gravity_velocity_valid,
             "battery": self.battery,
             "signal_strength": self.signal_strength,
             "accelerometer_x": self.accelerometer_x,
             "accelerometer_y": self.accelerometer_y,
             "accelerometer_z": self.accelerometer_z,
+            "firmware_version": self.firmware_version,
+            "device_type": self.device_type,
+            "mac_address": self.mac_address,
+            "data_format_version": self.data_format_version,
         }
 
 
@@ -82,107 +94,231 @@ class RAPTPillBLEParser:
     
     def _parse_metrics_data(self, data: bytes) -> RAPTPillSensorData | None:
         """Parse metrics data from RAPT manufacturer data."""
-        if len(data) < 22:
-            _LOGGER.warning("RAPT metrics data too short: %d bytes", len(data))
+        if len(data) < 4:
+            _LOGGER.warning("RAPT data too short: %d bytes", len(data))
             return None
         
         try:
             _LOGGER.debug("Parsing RAPT data: %d bytes: %s", len(data), data.hex())
             
-            # Use the official RAPT-BLE parsing format
-            _LOGGER.warning("RAPT DEBUG: Raw data (%d bytes): %s", len(data), data.hex())
-            
-            if len(data) >= 23:
-                # Official RAPT format: ">B6sHfhhhh" 
-                # B = version (1 byte)
-                # 6s = MAC address (6 bytes) 
-                # H = temperature raw (2 bytes)
-                # f = gravity (4 bytes)
-                # h = accel X (2 bytes)
-                # h = accel Y (2 bytes) 
-                # h = accel Z (2 bytes)
-                # h = battery (2 bytes)
-                
-                try:
-                    # Skip the "PT" prefix (first 2 bytes) and parse the rest
-                    payload = data[2:]  # Skip "50 54" prefix
-                    
-                    if len(payload) >= 21:
-                        unpacked = struct.unpack(">B6sHfhhhh", payload[:21])
-                        
-                        version = unpacked[0]
-                        mac_bytes = unpacked[1]
-                        temp_raw = unpacked[2] 
-                        gravity_float = unpacked[3]
-                        accel_x = unpacked[4] / 16.0
-                        accel_y = unpacked[5] / 16.0  
-                        accel_z = unpacked[6] / 16.0
-                        battery_raw = unpacked[7]
-                        
-                        # Convert using official RAPT formulas
-                        temperature = temp_raw / 128.0 - 273.15  # Kelvin to Celsius
-                        gravity = gravity_float / 1000.0
-                        battery = int(battery_raw / 256.0)
-                        
-                        _LOGGER.warning("RAPT DEBUG: version=%d, temp_raw=%d, gravity_float=%.3f, battery_raw=%d", 
-                                       version, temp_raw, gravity_float, battery_raw)
-                        _LOGGER.warning("RAPT DEBUG: Final - temp=%.2f°C, gravity=%.3f, battery=%d%%", 
-                                       temperature, gravity, battery)
-                    else:
-                        _LOGGER.warning("RAPT payload too short after removing prefix: %d bytes", len(payload))
-                        temperature, gravity, battery = 20.0, 1.020, 80
-                        accel_x = accel_y = accel_z = 0.0
-                        
-                except struct.error as e:
-                    _LOGGER.warning("RAPT struct unpack failed: %s", e)
-                    temperature, gravity, battery = 20.0, 1.020, 80
-                    accel_x = accel_y = accel_z = 0.0
+            # Check for different packet types based on prefix
+            if data[:4] == b'RAPT':
+                return self._parse_rapt_telemetry(data)
+            elif data[:3] == b'KEG':
+                return self._parse_keg_firmware(data)
+            elif data[:2] == b'PT':
+                return self._parse_legacy_format(data)
             else:
-                _LOGGER.warning("RAPT data too short: %d bytes", len(data))
-                temperature, gravity, battery = 20.0, 1.020, 80
-                accel_x = accel_y = accel_z = 0.0
-            
-            # Validate reasonable ranges
-            if temperature < -50 or temperature > 100:
-                _LOGGER.warning("Invalid temperature reading: %.2f°C", temperature)
-                temperature = None
+                _LOGGER.warning("Unknown RAPT packet format: %s", data[:4].hex())
+                return None
                 
-            if gravity and (gravity < 0.5 or gravity > 2.0):
-                _LOGGER.warning("Invalid gravity reading: %.3f", gravity)
-                gravity = None
-                
-            if battery and (battery < 0 or battery > 100):
-                _LOGGER.warning("Invalid battery reading: %d%%", battery)
-                battery = None
+        except Exception as e:
+            _LOGGER.error("Error parsing RAPT data: %s", e)
+            return None
+    
+    def _parse_rapt_telemetry(self, data: bytes) -> RAPTPillSensorData | None:
+        """Parse RAPT telemetry data (v1 and v2 formats)."""
+        if len(data) < 26:  # Minimum for v1 format
+            _LOGGER.warning("RAPT telemetry data too short: %d bytes", len(data))
+            return None
+        
+        try:
+            # Skip "RAPT" prefix (4 bytes)
+            payload = data[4:]
             
-            sensor_data = RAPTPillSensorData(
+            # Get format version
+            format_version = payload[0]
+            _LOGGER.debug("RAPT format version: %d", format_version)
+            
+            if format_version == 1:
+                return self._parse_v1_format(payload)
+            elif format_version == 2:
+                return self._parse_v2_format(payload)
+            else:
+                _LOGGER.warning("Unknown RAPT format version: %d", format_version)
+                return None
+                
+        except Exception as e:
+            _LOGGER.error("Error parsing RAPT telemetry: %s", e)
+            return None
+    
+    def _parse_v1_format(self, payload: bytes) -> RAPTPillSensorData | None:
+        """Parse v1 format: 0x01 mm mm mm mm mm mm tt tt gg gg gg gg xx xx yy yy zz zz bb bb"""
+        if len(payload) < 21:
+            _LOGGER.warning("v1 payload too short: %d bytes", len(payload))
+            return None
+        
+        try:
+            # v1 format: B6sHfhhhh (version + MAC + temp + gravity + accel_x + accel_y + accel_z + battery)
+            unpacked = struct.unpack(">B6sHfhhhh", payload[:21])
+            
+            version = unpacked[0]
+            mac_bytes = unpacked[1]
+            temp_raw = unpacked[2] 
+            gravity_float = unpacked[3]
+            accel_x_raw = unpacked[4]
+            accel_y_raw = unpacked[5]
+            accel_z_raw = unpacked[6]
+            battery_raw = unpacked[7]
+            
+            # Convert using official RAPT formulas
+            temperature = temp_raw / 128.0 - 273.15  # Kelvin to Celsius
+            gravity = gravity_float / 1000.0
+            battery = int(battery_raw / 256.0)
+            accel_x = accel_x_raw / 16.0
+            accel_y = accel_y_raw / 16.0  
+            accel_z = accel_z_raw / 16.0
+            mac_address = ':'.join(f'{b:02x}' for b in mac_bytes)
+            
+            _LOGGER.debug("v1 - temp=%.2f°C, gravity=%.4f, battery=%d%%, accel=(%.2f,%.2f,%.2f)", 
+                         temperature, gravity, battery, accel_x, accel_y, accel_z)
+            
+            return RAPTPillSensorData(
                 temperature=temperature,
                 gravity=gravity,
                 battery=battery,
                 accelerometer_x=accel_x,
                 accelerometer_y=accel_y,
                 accelerometer_z=accel_z,
+                mac_address=mac_address,
+                data_format_version=version
             )
-            
-            self._last_data = sensor_data
-            
-            _LOGGER.debug(
-                "Parsed RAPT data - Temp: %.1f°C, Gravity: %.3f, Battery: %d%%, "
-                "Accel: (%.2f, %.2f)",
-                temperature or 0,
-                gravity or 0,
-                battery or 0,
-                accel_x,
-                accel_y,
-            )
-            
-            return sensor_data
             
         except struct.error as e:
-            _LOGGER.error("Failed to parse RAPT metrics data: %s", e)
+            _LOGGER.error("v1 struct unpack failed: %s", e)
             return None
+    
+    def _parse_v2_format(self, payload: bytes) -> RAPTPillSensorData | None:
+        """Parse v2 format: 0x02 0x00 cc vv vv vv vv tt tt gg gg gg gg xx xx yy yy zz zz bb bb"""
+        if len(payload) < 23:
+            _LOGGER.warning("v2 payload too short: %d bytes", len(payload))
+            return None
+        
+        try:
+            # v2 format: BB B f H f hhhh (version + reserved + velocity_valid + velocity + temp + gravity + accel_x + accel_y + accel_z + battery)
+            unpacked = struct.unpack(">BBBfHfhhhh", payload[:23])
+            
+            version = unpacked[0]
+            reserved = unpacked[1]  # Should be 0x00
+            velocity_valid = unpacked[2] == 1
+            gravity_velocity = unpacked[3] if velocity_valid else None
+            temp_raw = unpacked[4] 
+            gravity_float = unpacked[5]
+            accel_x_raw = unpacked[6]
+            accel_y_raw = unpacked[7]
+            accel_z_raw = unpacked[8]
+            battery_raw = unpacked[9]
+            
+            # Convert using official RAPT formulas
+            temperature = temp_raw / 128.0 - 273.15  # Kelvin to Celsius
+            gravity = gravity_float / 1000.0
+            battery = int(battery_raw / 256.0)
+            accel_x = accel_x_raw / 16.0
+            accel_y = accel_y_raw / 16.0  
+            accel_z = accel_z_raw / 16.0
+            
+            # For v2, calculate MAC from BLE address (subtract 2 from last octet)
+            # This would need to be done in the caller since we don't have BLE address here
+            
+            _LOGGER.debug("v2 - temp=%.2f°C, gravity=%.4f, battery=%d%%, velocity=%.4f (valid=%s), accel=(%.2f,%.2f,%.2f)", 
+                         temperature, gravity, battery, gravity_velocity or 0, velocity_valid, accel_x, accel_y, accel_z)
+            
+            return RAPTPillSensorData(
+                temperature=temperature,
+                gravity=gravity,
+                gravity_velocity=gravity_velocity,
+                gravity_velocity_valid=velocity_valid,
+                battery=battery,
+                accelerometer_x=accel_x,
+                accelerometer_y=accel_y,
+                accelerometer_z=accel_z,
+                data_format_version=version
+            )
+            
+        except struct.error as e:
+            _LOGGER.error("v2 struct unpack failed: %s", e)
+            return None
+    
+    def _parse_keg_firmware(self, data: bytes) -> RAPTPillSensorData | None:
+        """Parse KEG firmware version packet: 0x4b 0x45 0x47 <firmware version string>"""
+        if len(data) < 4:
+            return None
+        
+        try:
+            # Skip "KEG" prefix (3 bytes)
+            firmware_version = data[3:].decode('utf-8', errors='ignore').strip()
+            _LOGGER.debug("Firmware version: %s", firmware_version)
+            
+            return RAPTPillSensorData(firmware_version=firmware_version)
+            
         except Exception as e:
-            _LOGGER.exception("Unexpected error parsing RAPT data: %s", e)
+            _LOGGER.error("Error parsing firmware version: %s", e)
+            return None
+    
+    def _parse_device_type(self, data: bytes) -> RAPTPillSensorData | None:
+        """Parse device type packet: 0x52 0x41 0x50 0x54 0x64 <device type string>"""
+        if len(data) < 6:
+            return None
+        
+        try:
+            # Skip "RAPT" + 0x64 prefix (5 bytes)
+            device_type = data[5:].decode('utf-8', errors='ignore').strip()
+            _LOGGER.debug("Device type: %s", device_type)
+            
+            return RAPTPillSensorData(device_type=device_type)
+            
+        except Exception as e:
+            _LOGGER.error("Error parsing device type: %s", e)
+            return None
+    
+    def _parse_legacy_format(self, data: bytes) -> RAPTPillSensorData | None:
+        """Parse legacy format for backwards compatibility."""
+        if len(data) < 23:
+            _LOGGER.warning("Legacy format data too short: %d bytes", len(data))
+            return None
+        
+        try:
+            # Skip "PT" prefix and use old parsing logic
+            payload = data[2:]
+            
+            if len(payload) >= 21:
+                unpacked = struct.unpack(">B6sHfhhhh", payload[:21])
+                
+                version = unpacked[0]
+                mac_bytes = unpacked[1]
+                temp_raw = unpacked[2] 
+                gravity_float = unpacked[3]
+                accel_x_raw = unpacked[4]
+                accel_y_raw = unpacked[5]
+                accel_z_raw = unpacked[6]
+                battery_raw = unpacked[7]
+                
+                # Convert using official RAPT formulas
+                temperature = temp_raw / 128.0 - 273.15  # Kelvin to Celsius
+                gravity = gravity_float / 1000.0
+                battery = int(battery_raw / 256.0)
+                accel_x = accel_x_raw / 16.0
+                accel_y = accel_y_raw / 16.0  
+                accel_z = accel_z_raw / 16.0
+                
+                _LOGGER.debug("Legacy - temp=%.2f°C, gravity=%.4f, battery=%d%%", 
+                             temperature, gravity, battery)
+                
+                return RAPTPillSensorData(
+                    temperature=temperature,
+                    gravity=gravity,
+                    battery=battery,
+                    accelerometer_x=accel_x,
+                    accelerometer_y=accel_y,
+                    accelerometer_z=accel_z,
+                    data_format_version=version
+                )
+            else:
+                _LOGGER.warning("Legacy payload too short: %d bytes", len(payload))
+                return None
+                
+        except struct.error as e:
+            _LOGGER.error("Legacy struct unpack failed: %s", e)
             return None
 
 

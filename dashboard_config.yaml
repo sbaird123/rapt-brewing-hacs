@@ -27,7 +27,9 @@ cards:
           - entity: sensor.rapt_brewing_session_manager_original_gravity
             name: Original Gravity
           - entity: sensor.rapt_brewing_session_manager_current_gravity
-            name: Current Gravity
+            name: Current Gravity (Raw)
+          - entity: sensor.rapt_brewing_session_manager_current_gravity_corrected
+            name: Current Gravity (Temp Corrected)
           - entity: number.rapt_brewing_session_manager_target_gravity
             name: Target Gravity
         show_header_toggle: false
@@ -79,7 +81,9 @@ cards:
     title: Gravity Over Time
     entities:
       - entity: sensor.rapt_brewing_session_manager_current_gravity
-        name: Current Gravity
+        name: Current Gravity (Raw)
+      - entity: sensor.rapt_brewing_session_manager_current_gravity_corrected
+        name: Current Gravity (Temp Corrected)
       - entity: sensor.rapt_brewing_session_manager_target_gravity
         name: Target Gravity
     hours_to_show: 168

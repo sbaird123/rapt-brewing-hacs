@@ -33,7 +33,9 @@ cards:
       - entity: sensor.rapt_brewing_session_manager_original_gravity
         name: Original
       - entity: sensor.rapt_brewing_session_manager_current_gravity
-        name: Current
+        name: Current (Raw)
+      - entity: sensor.rapt_brewing_session_manager_current_gravity_corrected
+        name: Current (Temp Corrected)
       - entity: number.rapt_brewing_session_manager_target_gravity
         name: Target
     show_header_toggle: false
@@ -75,7 +77,9 @@ cards:
     title: Gravity & Temperature
     entities:
       - entity: sensor.rapt_brewing_session_manager_current_gravity
-        name: Gravity
+        name: Gravity (Raw)
+      - entity: sensor.rapt_brewing_session_manager_current_gravity_corrected
+        name: Gravity (Temp Corrected)
       - entity: sensor.rapt_brewing_session_manager_current_temperature
         name: Temperature
     hours_to_show: 48

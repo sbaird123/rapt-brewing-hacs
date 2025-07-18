@@ -45,6 +45,12 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
+        key="current_gravity_corrected",
+        name="Current Gravity (Temp Corrected)",
+        icon="mdi:speedometer-slow",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
         key="target_gravity",
         name="Target Gravity",
         icon="mdi:target",
@@ -175,6 +181,12 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
                 if self.coordinator.data.current_session
                 else None
             )
+        elif self.entity_description.key == "current_gravity_corrected":
+            return (
+                self._calculate_temperature_corrected_gravity()
+                if self.coordinator.data.current_session
+                else None
+            )
         elif self.entity_description.key == "target_gravity":
             return (
                 self.coordinator.data.current_session.target_gravity
@@ -288,7 +300,32 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
                     ]
                 })
         
-        return attrs if attrs else None
+        return attrs
+    
+    def _calculate_temperature_corrected_gravity(self) -> float | None:
+        """Calculate temperature-corrected specific gravity.
+        
+        Standard formula: Corrected SG = Reading + ((Temperature - 20°C) × 0.00130)
+        Most hydrometers are calibrated at 20°C (68°F).
+        """
+        if not self.coordinator.data.current_session:
+            return None
+            
+        current_gravity = self.coordinator.data.current_session.current_gravity
+        current_temp = self.coordinator.data.current_session.current_temperature
+        
+        if current_gravity is None or current_temp is None:
+            return None
+            
+        # Temperature correction formula (calibrated at 20°C)
+        calibration_temp = 20.0  # °C
+        temp_correction_factor = 0.00130  # per °C
+        
+        temp_difference = current_temp - calibration_temp
+        correction = temp_difference * temp_correction_factor
+        corrected_gravity = current_gravity + correction
+        
+        return round(corrected_gravity, 4)
 
     @property
     def available(self) -> bool:
