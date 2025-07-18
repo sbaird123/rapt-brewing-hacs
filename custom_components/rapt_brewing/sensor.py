@@ -51,6 +51,19 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
+        key="current_gravity_pressure_corrected",
+        name="Current Gravity (Pressure Corrected)",
+        icon="mdi:speedometer-medium",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="dissolved_co2",
+        name="Dissolved CO2",
+        icon="mdi:molecule-co2",
+        native_unit_of_measurement="g/L",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
         key="target_gravity",
         name="Target Gravity",
         icon="mdi:target",
@@ -238,6 +251,18 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         elif self.entity_description.key == "current_gravity_temp_corrected":
             return (
                 self._calculate_temperature_corrected_gravity()
+                if self.coordinator.data.current_session
+                else None
+            )
+        elif self.entity_description.key == "current_gravity_pressure_corrected":
+            return (
+                self._calculate_pressure_corrected_gravity()
+                if self.coordinator.data.current_session
+                else None
+            )
+        elif self.entity_description.key == "dissolved_co2":
+            return (
+                self._calculate_dissolved_co2()
                 if self.coordinator.data.current_session
                 else None
             )
@@ -429,6 +454,39 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
                      corrected_gravity, correction)
         
         return round(corrected_gravity, 4)
+    
+    def _calculate_pressure_corrected_gravity(self) -> float | None:
+        """Calculate pressure-corrected specific gravity (CO2 compensation)."""
+        if not self.coordinator.data.current_session:
+            return None
+            
+        session = self.coordinator.data.current_session
+        
+        # Start with temperature-corrected gravity
+        temp_corrected = self._calculate_temperature_corrected_gravity()
+        if temp_corrected is None:
+            return None
+            
+        # Apply pressure correction if pressure fermentation is enabled
+        if not session.pressure_fermentation or not session.current_pressure or session.current_pressure <= 0:
+            return temp_corrected
+            
+        # Use coordinator's pressure correction method
+        pressure_corrected = self.coordinator._get_pressure_corrected_gravity(session, temp_corrected)
+        
+        return round(pressure_corrected, 4)
+    
+    def _calculate_dissolved_co2(self) -> float | None:
+        """Calculate dissolved CO2 levels in g/L."""
+        if not self.coordinator.data.current_session:
+            return None
+            
+        session = self.coordinator.data.current_session
+        
+        # Use coordinator's CO2 calculation method
+        dissolved_co2 = self.coordinator._calculate_dissolved_co2(session)
+        
+        return round(dissolved_co2, 1) if dissolved_co2 is not None else None
     
     def _calculate_device_stability(self) -> str | None:
         """Calculate device stability based on accelerometer data."""

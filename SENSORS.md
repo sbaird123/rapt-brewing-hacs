@@ -7,6 +7,8 @@
 | `original_gravity` | Starting gravity | SG |
 | `current_gravity` | Current specific gravity (raw) | SG |
 | `current_gravity_temp_corrected` | Temperature-corrected gravity | SG |
+| `current_gravity_pressure_corrected` | Pressure-corrected gravity (CO2 compensated) | SG |
+| `dissolved_co2` | Dissolved CO2 levels | g/L |
 | `target_gravity` | Target final gravity | SG |
 | `alcohol_percentage` | Calculated alcohol by volume | % |
 | `attenuation` | Apparent attenuation | % |
@@ -35,6 +37,13 @@
 | `firmware_version` | RAPT Pill firmware version | - |
 | `device_type` | Device type information | - |
 | `data_format_version` | BLE data format version | - |
+
+## Pressure Fermentation Controls
+
+| Control | Description | Unit |
+|---------|-------------|------|
+| `starting_pressure` | Starting fermentation pressure | PSI |
+| `current_pressure` | Current vessel pressure | PSI |
 
 ## Entity Naming
 

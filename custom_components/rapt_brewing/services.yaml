@@ -42,6 +42,33 @@ start_brewing_session:
           max: 30
           step: 0.1
           unit_of_measurement: "°C"
+    pressure_fermentation:
+      name: Pressure Fermentation
+      description: Enable pressure fermentation monitoring
+      required: false
+      default: false
+      selector:
+        boolean:
+    starting_pressure:
+      name: Starting Pressure
+      description: Starting fermentation pressure (PSI)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 0.1
+          unit_of_measurement: "PSI"
+    current_pressure:
+      name: Current Pressure
+      description: Current vessel pressure (PSI)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 0.1
+          unit_of_measurement: "PSI"
 
 stop_brewing_session:
   name: Stop Brewing Session

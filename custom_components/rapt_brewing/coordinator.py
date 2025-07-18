@@ -199,6 +199,10 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         # Get temperature-corrected gravity for more accurate calculations
         corrected_gravity = self._get_temperature_corrected_gravity(session)
         
+        # Apply pressure correction if pressure fermentation is enabled
+        if session.pressure_fermentation and corrected_gravity:
+            corrected_gravity = self._get_pressure_corrected_gravity(session, corrected_gravity)
+        
         # Calculate alcohol percentage using temperature-corrected gravity with improved accuracy
         if session.original_gravity and corrected_gravity:
             # Validate gravity values are reasonable
@@ -304,6 +308,51 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         corrected_gravity = gravity + correction
         
         return corrected_gravity
+    
+    def _get_pressure_corrected_gravity(self, session: BrewingSession, temp_corrected_gravity: float) -> float:
+        """Apply CO2 pressure correction to gravity reading."""
+        if not session.current_pressure or session.current_pressure <= 0:
+            return temp_corrected_gravity
+            
+        # CO2 solubility increases with pressure (Henry's Law)
+        # At normal fermentation temp (18-22°C), CO2 solubility is ~1.7 g/L per PSI
+        temp_celsius = session.current_temperature or 20.0
+        
+        # Temperature factor for CO2 solubility (decreases with higher temp)
+        temp_factor = 1.0 - ((temp_celsius - 20.0) * 0.02)  # 2% decrease per °C above 20°C
+        temp_factor = max(0.5, min(1.5, temp_factor))  # Clamp between 0.5-1.5
+        
+        # Calculate dissolved CO2 in g/L
+        co2_solubility_per_psi = 1.7 * temp_factor  # g/L per PSI
+        dissolved_co2_g_per_l = session.current_pressure * co2_solubility_per_psi
+        
+        # Convert dissolved CO2 to gravity points
+        # Each gram of CO2 per liter adds approximately 0.0004 SG points
+        co2_gravity_contribution = dissolved_co2_g_per_l * 0.0004
+        
+        # Subtract CO2 contribution to get true fermentable gravity
+        pressure_corrected_gravity = temp_corrected_gravity - co2_gravity_contribution
+        
+        _LOGGER.debug("RAPT PRESSURE CORRECTION: Pressure=%.1f PSI, Temp=%.1f°C, CO2=%.1f g/L, "
+                     "Gravity correction=-%.4f, Original=%.4f, Corrected=%.4f",
+                     session.current_pressure, temp_celsius, dissolved_co2_g_per_l,
+                     co2_gravity_contribution, temp_corrected_gravity, pressure_corrected_gravity)
+        
+        return pressure_corrected_gravity
+    
+    def _calculate_dissolved_co2(self, session: BrewingSession) -> float | None:
+        """Calculate dissolved CO2 levels in g/L."""
+        if not session.current_pressure or session.current_pressure <= 0:
+            return None
+            
+        temp_celsius = session.current_temperature or 20.0
+        temp_factor = 1.0 - ((temp_celsius - 20.0) * 0.02)
+        temp_factor = max(0.5, min(1.5, temp_factor))
+        
+        co2_solubility_per_psi = 1.7 * temp_factor
+        dissolved_co2 = session.current_pressure * co2_solubility_per_psi
+        
+        return dissolved_co2
     
     async def _check_alerts_ble(self, ble_data: Any) -> None:
         """Check for brewing alerts using BLE data."""
@@ -435,7 +484,10 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
     async def start_session(self, name: str, recipe: str | None = None, 
                           original_gravity: float | None = None,
                           target_gravity: float | None = None,
-                          target_temperature: float | None = None) -> str:
+                          target_temperature: float | None = None,
+                          pressure_fermentation: bool = False,
+                          starting_pressure: float | None = None,
+                          current_pressure: float | None = None) -> str:
         """Start a new brewing session."""
         session_id = f"session_{dt_util.now().strftime('%Y%m%d_%H%M%S')}"
         
@@ -448,6 +500,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             target_temperature=target_temperature,
             state=SESSION_STATE_ACTIVE,
             started_at=dt_util.now(),
+            pressure_fermentation=pressure_fermentation,
+            starting_pressure=starting_pressure,
+            current_pressure=current_pressure,
         )
         
         self.data.add_session(session)

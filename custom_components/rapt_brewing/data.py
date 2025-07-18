@@ -33,6 +33,10 @@ class BrewingSession:
     notes: str | None = None
     data_points: list[DataPoint] = field(default_factory=list)
     alerts: list[Alert] = field(default_factory=list)
+    # Pressure fermentation fields (PSI)
+    starting_pressure: float | None = None
+    current_pressure: float | None = None
+    pressure_fermentation: bool = False
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -55,6 +59,9 @@ class BrewingSession:
             "notes": self.notes,
             "data_points": [dp.to_dict() for dp in self.data_points],
             "alerts": [alert.to_dict() for alert in self.alerts],
+            "starting_pressure": self.starting_pressure,
+            "current_pressure": self.current_pressure,
+            "pressure_fermentation": self.pressure_fermentation,
         }
     
     @classmethod
@@ -79,6 +86,9 @@ class BrewingSession:
             notes=data.get("notes"),
             data_points=[DataPoint.from_dict(dp) for dp in data.get("data_points", [])],
             alerts=[Alert.from_dict(alert) for alert in data.get("alerts", [])],
+            starting_pressure=data.get("starting_pressure"),
+            current_pressure=data.get("current_pressure"),
+            pressure_fermentation=data.get("pressure_fermentation", False),
         )
 
 

@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-07-18
+
+### 🚀 **MAJOR FEATURE: Pressure Fermentation Support**
+
+This release adds comprehensive pressure fermentation monitoring with advanced CO2 compensation calculations.
+
+### ✨ **New Features**
+- **Pressure Fermentation Mode**: Enable pressure brewing with CO2 solubility compensation
+- **CO2 Compensation**: Accurate gravity readings that account for dissolved CO2 
+- **Temperature-Dependent Calculations**: CO2 solubility adjusts based on fermentation temperature
+- **Pressure Monitoring**: Track starting and current vessel pressure in PSI
+- **True Gravity Readings**: Removes CO2 bias for accurate fermentation tracking
+- **Dissolved CO2 Tracking**: Monitor CO2 levels throughout fermentation
+
+### 📊 **New Sensors & Controls**
+- `starting_pressure` - Number entity for initial fermentation pressure
+- `current_pressure` - Number entity for current vessel pressure  
+- `current_gravity_pressure_corrected` - CO2-compensated gravity sensor
+- `dissolved_co2` - Dissolved CO2 levels sensor (g/L)
+
+### 🎛️ **Enhanced Session Management**
+- Pressure fermentation toggle in session creation
+- Automatic pressure mode activation when pressure > 0
+- Enhanced dashboard with pressure monitoring sections
+- Mobile-friendly pressure tracking interface
+
+### 🧮 **Brewing Science Implementation**
+- **CO2 Solubility**: ~1.7 g/L per PSI at 20°C (Henry's Law)
+- **Temperature Correction**: 2% decrease per °C above 20°C
+- **Gravity Compensation**: ~0.0004 SG per gram dissolved CO2
+- **Pressure-Corrected ABV**: Uses true gravity for accurate alcohol calculations
+
+### 📚 **Documentation**
+- Complete pressure fermentation guide in README
+- Technical calculation explanations
+- Updated sensor documentation
+- Enhanced dashboard configurations for pressure monitoring
+
 ## [2.2.1] - 2025-07-18
 
 ### 🔧 **Bug Fixes**
