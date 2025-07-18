@@ -220,7 +220,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 # Cap at reasonable maximum (20% ABV)
                 session.alcohol_percentage = min(session.alcohol_percentage, 20.0)
                 
-                _LOGGER.debug("RAPT CALC: Alcohol %.1f%% (OG=%.3f, CG_corrected=%.3f, factor=%.2f)", 
+                _LOGGER.warning("RAPT CALC: Alcohol %.1f%% (OG=%.3f, CG_corrected=%.3f, factor=%.2f)", 
                              session.alcohol_percentage, session.original_gravity, corrected_gravity, correction_factor)
         else:
             _LOGGER.warning("RAPT CALC: Cannot calculate alcohol - OG=%s, CG_corrected=%s", 
@@ -233,9 +233,16 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 (session.original_gravity - corrected_gravity) /
                 (session.original_gravity - 1.000) * 100
             )
+            
+            # CRITICAL DEBUG: Log attenuation calculation details
+            _LOGGER.warning("RAPT ATTENUATION CALC: OG=%.4f, CG_raw=%.4f, CG_corrected=%.4f, temp=%.2f°C", 
+                           session.original_gravity, session.current_gravity or 0, corrected_gravity, session.current_temperature or 0)
+            _LOGGER.warning("RAPT ATTENUATION CALC: Formula: (%.4f - %.4f) / (%.4f - 1.000) * 100 = %.2f%%", 
+                           session.original_gravity, corrected_gravity, session.original_gravity, apparent_attenuation)
+            
             session.attenuation = max(0.0, min(100.0, apparent_attenuation))  # Clamp to 0-100%
-            _LOGGER.debug("RAPT CALC: Attenuation %.1f%% (OG=%.3f, CG_corrected=%.3f)", 
-                         session.attenuation, session.original_gravity, corrected_gravity)
+            _LOGGER.warning("RAPT ATTENUATION RESULT: %.1f%% (clamped from %.2f%%)", 
+                           session.attenuation, apparent_attenuation)
         else:
             _LOGGER.warning("RAPT CALC: Cannot calculate attenuation - OG=%s, CG_corrected=%s", 
                            session.original_gravity, corrected_gravity)
@@ -269,6 +276,16 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         temp_difference = session.current_temperature - calibration_temp
         correction = temp_difference * temp_correction_factor
         corrected_gravity = session.current_gravity + correction
+        
+        # Safety check: prevent ridiculous temperature corrections
+        if abs(correction) > 0.020:  # Max 20 points correction
+            _LOGGER.warning("RAPT TEMP CORRECTION: Extreme correction detected! Raw=%.4f, Temp=%.2f°C, Correction=%.4f - using raw gravity", 
+                           session.current_gravity, session.current_temperature, correction)
+            return session.current_gravity
+        
+        # DEBUG: Log temperature correction details
+        _LOGGER.warning("RAPT TEMP CORRECTION: Raw=%.4f, Temp=%.2f°C, Correction=%.4f, Corrected=%.4f", 
+                       session.current_gravity, session.current_temperature, correction, corrected_gravity)
         
         return corrected_gravity
     
