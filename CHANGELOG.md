@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2025-07-18
+
+### 🔧 **Bug Fix: Pressure Fermentation Logic**
+- **Fixed pressure fermentation activation**: Now enables when any pressure setting is configured (not just starting pressure > 0)
+- **Improved real-world workflow**: Supports typical brewing where fermentation starts at 0 PSI and builds pressure during fermentation
+- **Pressure correction now works properly**: Activates when current pressure > 0, regardless of starting pressure
+
+### 🍺 **Why This Matters**
+Most fermentations start at atmospheric pressure (0 PSI) and build pressure from CO2 production or spunding valves. The previous logic incorrectly required starting pressure > 0 to enable pressure fermentation mode.
+
 ## [2.3.0] - 2025-07-18
 
 ### 🚀 **MAJOR FEATURE: Pressure Fermentation Support**

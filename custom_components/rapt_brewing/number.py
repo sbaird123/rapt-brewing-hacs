@@ -136,10 +136,13 @@ class RAPTBrewingNumber(RAPTBrewingEntity, NumberEntity):
             _LOGGER.warning("RAPT NUMBER: Set target temperature to %.1f°C for session: %s", value, session.name)
         elif self.entity_description.key == "starting_pressure":
             session.starting_pressure = value
-            session.pressure_fermentation = value > 0  # Enable pressure fermentation if pressure is set
+            # Enable pressure fermentation mode if starting pressure is set (even if 0)
+            session.pressure_fermentation = True
             _LOGGER.warning("RAPT NUMBER: Set starting pressure to %.1f PSI for session: %s", value, session.name)
         elif self.entity_description.key == "current_pressure":
             session.current_pressure = value
+            # Enable pressure fermentation mode if current pressure is being tracked
+            session.pressure_fermentation = True
             _LOGGER.warning("RAPT NUMBER: Set current pressure to %.1f PSI for session: %s", value, session.name)
         
         await self.coordinator._save_data()
