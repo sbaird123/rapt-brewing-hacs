@@ -5,22 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5] - 2025-07-18
+
+### 🔋 **Fix: Battery Calibration Threshold**
+- **Corrected calibration threshold**: Changed from >5% to >0% for battery calibration
+- **Proper low battery detection**: 1% battery is calibrated and should trigger low battery warning
+- **More accurate logic**: Only 0% indicates uncalibrated state, any other percentage is a real reading
+
+### 🎯 **Why This Matters**
+A battery reading 1% is definitely calibrated and genuinely low - it should trigger a warning immediately. Only 0% readings indicate an uncalibrated/stuck state.
+
 ## [2.3.4] - 2025-07-18
 
 ### 🔋 **Alert Fix: Smart Battery Calibration**
 - **Eliminated false low battery warnings**: No more alerts when battery starts at 0% (uncalibrated)
-- **Automatic calibration detection**: Marks battery as calibrated when first reading above 5% is detected
+- **Automatic calibration detection**: Marks battery as calibrated when first reading above 0% is detected
 - **Smart warning logic**: Low battery alerts (at 20%) only trigger after battery calibration
 - **Persistent calibration state**: Once calibrated, continues monitoring throughout the session
 
 ### 🚫 **What's Fixed**
 - **No more 0% startup alerts**: Uncalibrated RAPT Pill batteries won't trigger false warnings
-- **Proper calibration timing**: Detects when battery provides real readings (>5%)
+- **Proper calibration timing**: Detects when battery provides real readings (>0%)
 - **Accurate low battery detection**: 20% threshold only applies to calibrated batteries
 
 ### 🔋 **How It Works**
 1. **Session starts**: Battery 0% → No warnings (uncalibrated)
-2. **Battery calibrates**: First reading >5% → Marked as calibrated + logged
+2. **Battery calibrates**: First reading >0% → Marked as calibrated + logged
 3. **Normal monitoring**: Warnings trigger if battery drops below 20%
 
 ## [2.3.3] - 2025-07-18

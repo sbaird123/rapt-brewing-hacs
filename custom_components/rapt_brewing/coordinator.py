@@ -405,8 +405,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         
         # Check battery level - but only warn if battery has been calibrated
         if ble_data.battery is not None:
-            # Mark battery as calibrated if we see a reading above 5% (not stuck at 0%)
-            if ble_data.battery > 5 and not session.battery_calibrated:
+            # Mark battery as calibrated if we see any reading above 0% (not stuck at 0%)
+            if ble_data.battery > 0 and not session.battery_calibrated:
                 session.battery_calibrated = True
                 _LOGGER.info("RAPT BATTERY: Battery calibrated at %.0f%% for session: %s", 
                            ble_data.battery, session.name)
