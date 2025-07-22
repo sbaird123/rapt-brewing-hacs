@@ -543,10 +543,11 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         if not self.coordinator.data.current_session or not self.coordinator.data.current_session.data_points:
             return None
         
-        from datetime import datetime, timedelta
+        from datetime import timedelta
+        import homeassistant.util.dt as dt_util
         
         # Get points from the last hour for averaging
-        now = datetime.now()
+        now = dt_util.now()
         one_hour_ago = now - timedelta(hours=1)
         
         recent_points = [
