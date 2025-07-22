@@ -403,13 +403,22 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 "Fermentation appears to be complete"
             )
         
-        # Check battery level
-        if ble_data.battery is not None and ble_data.battery < DEFAULT_LOW_BATTERY_THRESHOLD:
-            await self._add_alert(
-                session,
-                ALERT_TYPE_LOW_BATTERY,
-                f"Low battery: {ble_data.battery}%"
-            )
+        # Check battery level - but only warn if battery has been calibrated
+        if ble_data.battery is not None:
+            # Mark battery as calibrated if we see a reading above 5% (not stuck at 0%)
+            if ble_data.battery > 5 and not session.battery_calibrated:
+                session.battery_calibrated = True
+                _LOGGER.info("RAPT BATTERY: Battery calibrated at %.0f%% for session: %s", 
+                           ble_data.battery, session.name)
+            
+            # Only warn about low battery if it's been calibrated (prevents 0% startup warnings)
+            if (session.battery_calibrated and 
+                ble_data.battery < DEFAULT_LOW_BATTERY_THRESHOLD):
+                await self._add_alert(
+                    session,
+                    ALERT_TYPE_LOW_BATTERY,
+                    f"Low battery: {ble_data.battery}%"
+                )
     
     async def _add_alert(self, session: BrewingSession, alert_type: str, message: str) -> None:
         """Add an alert to the session."""

@@ -37,6 +37,8 @@ class BrewingSession:
     starting_pressure: float | None = None
     current_pressure: float | None = None
     pressure_fermentation: bool = False
+    # Battery calibration tracking
+    battery_calibrated: bool = False
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -62,6 +64,7 @@ class BrewingSession:
             "starting_pressure": self.starting_pressure,
             "current_pressure": self.current_pressure,
             "pressure_fermentation": self.pressure_fermentation,
+            "battery_calibrated": self.battery_calibrated,
         }
     
     @classmethod
@@ -89,6 +92,7 @@ class BrewingSession:
             starting_pressure=data.get("starting_pressure"),
             current_pressure=data.get("current_pressure"),
             pressure_fermentation=data.get("pressure_fermentation", False),
+            battery_calibrated=data.get("battery_calibrated", False),
         )
 
 
