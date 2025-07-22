@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.8] - 2025-07-18
+
+### 🔧 **Fix: Import Error in Fermentation Activity Sensor**
+- **Fixed bad import statement**: Changed `from ..const import` to `from .const import`
+- **Resolved sensor unavailable**: Fermentation activity sensor crashed due to incorrect relative import
+- **Restored scientific thresholds**: Sensor now properly uses the new accurate fermentation rate constants
+
+### 🐛 **What Broke in v2.3.7**
+The fermentation activity sensor showed "unavailable" due to a Python import error when trying to access the new scientific threshold constants.
+
 ## [2.3.7] - 2025-07-18
 
 ### 🔬 **Major Fix: Scientifically Accurate Fermentation Thresholds**

@@ -600,7 +600,7 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         
         elif avg_fermentation_rate is not None:
             # Use scientifically accurate fermentation rate thresholds based on real brewing data
-            from ..const import (
+            from .const import (
                 FERMENTATION_RATE_VIGOROUS, 
                 FERMENTATION_RATE_ACTIVE,
                 FERMENTATION_RATE_MODERATE, 
