@@ -539,45 +539,67 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
             return "Unknown"
     
     def _calculate_fermentation_activity(self) -> str | None:
-        """Calculate fermentation activity based on gravity velocity and accelerometer data."""
+        """Calculate fermentation activity based on averaged gravity velocity and accelerometer data over the last hour."""
         if not self.coordinator.data.current_session or not self.coordinator.data.current_session.data_points:
             return None
-            
-        recent_points = self.coordinator.data.current_session.data_points[-10:]  # Last 10 points
         
-        # Get gravity velocity from latest point (if available from v2 format)
-        latest_point = self.coordinator.data.current_session.data_points[-1]
-        gravity_velocity = getattr(latest_point, 'gravity_velocity', None)
+        from datetime import datetime, timedelta
         
-        # Get our calculated fermentation rate as backup
-        fermentation_rate = self.coordinator.data.current_session.fermentation_rate
+        # Get points from the last hour for averaging
+        now = datetime.now()
+        one_hour_ago = now - timedelta(hours=1)
         
-        # Get accelerometer variation (CO2 bubbles cause vibration)
+        recent_points = [
+            point for point in self.coordinator.data.current_session.data_points
+            if point.timestamp >= one_hour_ago
+        ]
+        
+        if len(recent_points) < 2:
+            return "Unknown"
+        
+        # Average gravity velocity from RAPT over the last hour
+        gravity_velocities = []
+        for point in recent_points:
+            velocity = getattr(point, 'gravity_velocity', None)
+            if velocity is not None:
+                gravity_velocities.append(abs(velocity))
+        
+        # Calculate average fermentation rate over the last hour as backup
+        avg_fermentation_rate = None
+        if len(recent_points) >= 2:
+            time_span = (recent_points[-1].timestamp - recent_points[0].timestamp).total_seconds() / 3600  # hours
+            if time_span > 0:
+                gravities = [point.gravity for point in recent_points if point.gravity is not None]
+                if len(gravities) >= 2:
+                    gravity_change = abs(gravities[-1] - gravities[0])
+                    avg_fermentation_rate = gravity_change / time_span  # SG/hour over the last hour
+        
+        # Get accelerometer variation (CO2 bubbles cause vibration) - averaged over last hour
         accel_variation = self._get_accelerometer_variation(recent_points)
         
-        # Classify fermentation activity
-        if gravity_velocity is not None:
-            # Use official gravity velocity from RAPT (points per day)
-            velocity_abs = abs(gravity_velocity)
+        # Classify fermentation activity using averaged values
+        if gravity_velocities:
+            # Use averaged official gravity velocity from RAPT (points per day)
+            avg_velocity = sum(gravity_velocities) / len(gravity_velocities)
             
-            if velocity_abs > 5.0:  # Very fast gravity change
+            if avg_velocity > 5.0:  # Very fast gravity change
                 if accel_variation and accel_variation > 0.2:
                     return "Vigorous"
                 else:
                     return "Active"
-            elif velocity_abs > 2.0:  # Moderate gravity change
+            elif avg_velocity > 2.0:  # Moderate gravity change
                 if accel_variation and accel_variation > 0.15:
                     return "Active"
                 else:
                     return "Moderate"
-            elif velocity_abs > 0.5:  # Slow gravity change
+            elif avg_velocity > 0.5:  # Slow gravity change
                 return "Slow"
             else:
                 return "Inactive"
         
-        elif fermentation_rate is not None:
-            # Fallback to our calculated fermentation rate (SG/hr)
-            rate_per_day = abs(fermentation_rate * 24)
+        elif avg_fermentation_rate is not None:
+            # Fallback to our calculated average fermentation rate (SG/hr over last hour)
+            rate_per_day = avg_fermentation_rate * 24  # Convert to SG/day
             
             if rate_per_day > 0.005:  # ~5 points per day
                 if accel_variation and accel_variation > 0.2:

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.3] - 2025-07-18
+
+### 🔧 **Sensor Fix: Fermentation Activity Smoothing**
+- **Fixed jumpy fermentation activity sensor**: Now uses rolling average over the last hour instead of just latest readings
+- **More stable activity readings**: Eliminates rapid bouncing between "active, slow, active, inactive" states
+- **Better end-of-fermentation detection**: Provides consistent readings for nearly finished brews
+- **Improved algorithm**: Averages gravity velocity and fermentation rate data over 60 minutes for accurate trends
+
+### 🍺 **Why This Matters**
+The fermentation activity sensor was too reactive to momentary fluctuations, making it unusable for tracking fermentation progress. Now it provides stable, meaningful readings that reflect actual fermentation trends rather than noise.
+
 ## [2.3.2] - 2025-07-18
 
 ### 🔧 **Dashboard Fix: Mobile Chart**
