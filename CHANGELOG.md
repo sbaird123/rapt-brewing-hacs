@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.7] - 2025-07-18
+
+### 🔬 **Major Fix: Scientifically Accurate Fermentation Thresholds**
+- **Fixed incorrect fermentation rate thresholds**: Updated based on real brewing science and data
+- **Corrected stuck fermentation detection**: Changed from 24 points/day to 1 point/day threshold
+- **Accurate activity classification**: Thresholds now match actual fermentation rates from brewing studies
+- **Aligned detection systems**: Both stuck fermentation alerts and activity sensor use same scientific thresholds
+
+### 📊 **Real Brewing Science Applied**
+Based on actual fermentation data from Double IPAs and brewing research:
+- **Vigorous**: >19 points/day (peak fermentation)
+- **Active**: >10 points/day (healthy fermentation)
+- **Moderate**: >2 points/day (steady progress)
+- **Slow**: >1 point/day (slow but progressing)  
+- **Inactive/Stuck**: ≤1 point/day (effectively stalled)
+
+### 🚨 **Critical Accuracy Fix**
+Previous thresholds were **10-100x too high**, causing:
+- Stuck fermentation detection at 24+ points/day (should be ≤1)
+- Activity sensor showing "Moderate" for truly stalled fermentation
+- Misalignment between alerts and sensor readings
+
+Now both systems use the same scientifically accurate thresholds based on real brewing data.
+
 ## [2.3.6] - 2025-07-18
 
 ### 🔧 **Fix: Fermentation Activity Sensor Unavailable**

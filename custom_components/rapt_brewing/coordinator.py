@@ -34,6 +34,7 @@ from .const import (
     DEFAULT_TEMPERATURE_HIGH_THRESHOLD,
     DEFAULT_TEMPERATURE_LOW_THRESHOLD,
     DEFAULT_LOW_BATTERY_THRESHOLD,
+    FERMENTATION_RATE_STUCK,
 )
 from .data import RAPTBrewingData, BrewingSession, DataPoint, Alert
 
@@ -362,8 +363,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         session = self.data.current_session
         now = dt_util.now()
         
-        # Check for stuck fermentation
-        if session.fermentation_rate is not None and abs(session.fermentation_rate) < 0.001:
+        # Check for stuck fermentation using scientifically accurate threshold
+        if session.fermentation_rate is not None and abs(session.fermentation_rate) < FERMENTATION_RATE_STUCK:
             if session.data_points:
                 last_significant_change = None
                 for dp in reversed(session.data_points):

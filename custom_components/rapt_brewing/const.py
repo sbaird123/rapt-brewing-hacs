@@ -62,3 +62,10 @@ DEFAULT_STUCK_FERMENTATION_HOURS: Final = 48
 DEFAULT_TEMPERATURE_HIGH_THRESHOLD: Final = 30.0  # Celsius
 DEFAULT_TEMPERATURE_LOW_THRESHOLD: Final = 10.0  # Celsius
 DEFAULT_LOW_BATTERY_THRESHOLD: Final = 20  # Percentage
+
+# Fermentation rate thresholds based on real brewing data (SG/hour)
+FERMENTATION_RATE_VIGOROUS: Final = 0.0008  # >19 points/day - peak fermentation
+FERMENTATION_RATE_ACTIVE: Final = 0.0004    # >10 points/day - good fermentation  
+FERMENTATION_RATE_MODERATE: Final = 0.0001  # >2 points/day - steady progress
+FERMENTATION_RATE_SLOW: Final = 0.00004     # >1 point/day - slow but progressing
+FERMENTATION_RATE_STUCK: Final = 0.00004    # ≤1 point/day - effectively stalled

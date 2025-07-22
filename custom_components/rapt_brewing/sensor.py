@@ -581,37 +581,47 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         # Classify fermentation activity using averaged values
         if gravity_velocities:
             # Use averaged official gravity velocity from RAPT (points per day)
+            # Convert to scientifically accurate thresholds
             avg_velocity = sum(gravity_velocities) / len(gravity_velocities)
             
-            if avg_velocity > 5.0:  # Very fast gravity change
+            if avg_velocity > 19.0:  # >19 points/day - peak fermentation
                 if accel_variation and accel_variation > 0.2:
                     return "Vigorous"
                 else:
                     return "Active"
-            elif avg_velocity > 2.0:  # Moderate gravity change
-                if accel_variation and accel_variation > 0.15:
-                    return "Active"
-                else:
-                    return "Moderate"
-            elif avg_velocity > 0.5:  # Slow gravity change
+            elif avg_velocity > 10.0:  # >10 points/day - good fermentation
+                return "Active"
+            elif avg_velocity > 2.0:  # >2 points/day - steady progress
+                return "Moderate"
+            elif avg_velocity > 1.0:  # >1 point/day - slow but progressing
                 return "Slow"
-            else:
+            else:  # ≤1 point/day - effectively stalled
                 return "Inactive"
         
         elif avg_fermentation_rate is not None:
-            # Fallback to our calculated average fermentation rate (SG/hr over last hour)
-            rate_per_day = avg_fermentation_rate * 24  # Convert to SG/day
+            # Use scientifically accurate fermentation rate thresholds based on real brewing data
+            from ..const import (
+                FERMENTATION_RATE_VIGOROUS, 
+                FERMENTATION_RATE_ACTIVE,
+                FERMENTATION_RATE_MODERATE, 
+                FERMENTATION_RATE_SLOW,
+                FERMENTATION_RATE_STUCK
+            )
             
-            if rate_per_day > 0.005:  # ~5 points per day
+            rate_abs = abs(avg_fermentation_rate)
+            
+            if rate_abs > FERMENTATION_RATE_VIGOROUS:  # >19 points/day
                 if accel_variation and accel_variation > 0.2:
                     return "Vigorous"
                 else:
                     return "Active"
-            elif rate_per_day > 0.002:  # ~2 points per day
+            elif rate_abs > FERMENTATION_RATE_ACTIVE:  # >10 points/day
+                return "Active"
+            elif rate_abs > FERMENTATION_RATE_MODERATE:  # >2 points/day
                 return "Moderate"
-            elif rate_per_day > 0.0005:  # ~0.5 points per day
+            elif rate_abs > FERMENTATION_RATE_SLOW:  # >1 point/day
                 return "Slow"
-            else:
+            else:  # ≤1 point/day - effectively stalled
                 return "Inactive"
         
         return "Unknown"
