@@ -271,8 +271,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             return None
             
         # Temperature correction formula (calibrated at 20°C)
+        # When temperature increases, liquid density decreases, hydrometer reads lower
         calibration_temp = 20.0  # °C
-        temp_correction_factor = 0.00130  # per °C
+        temp_correction_factor = 0.0004  # per °C (proper factor for beer wort)
         
         temp_difference = session.current_temperature - calibration_temp
         correction = temp_difference * temp_correction_factor
@@ -317,8 +318,10 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             return None
             
         # Temperature correction formula (calibrated at 20°C)
+        # When temperature increases, liquid density decreases, hydrometer reads lower
+        # Correction: add temperature effect to get true gravity at calibration temp
         calibration_temp = 20.0  # °C
-        temp_correction_factor = 0.00130  # per °C
+        temp_correction_factor = 0.0004  # per °C (proper factor for beer wort)
         
         temp_difference = temperature - calibration_temp
         correction = temp_difference * temp_correction_factor

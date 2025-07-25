@@ -5,9 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-07-25
+
+### 🚨 **MAJOR FIX: Corrected Temperature Correction Formula**
+- **Fixed temperature correction factor**: Reduced from 0.00130 to 0.0004 per °C (proper factor for beer wort)
+- **Eliminated excessive temperature corrections**: Temperature-corrected gravity no longer shows extreme fluctuations
+- **Accurate brewing science**: Now uses the correct temperature coefficient for beer/wort density
+- **Massive stability improvement**: Temperature-corrected readings are now scientifically accurate
+
+### 🔬 **What Was Wrong**
+The temperature correction factor was **3.25× too large** (0.00130 vs proper 0.0004), causing:
+- **Extreme overcorrection**: 4°C temperature change caused 0.0052 SG correction (should be 0.0016)
+- **Temperature tracking**: Corrected gravity appeared to track temperature changes exactly
+- **False fermentation signals**: Temperature fluctuations looked like continued fermentation activity
+- **Inaccurate calculations**: ABV, attenuation, and fermentation rates were affected
+
+### 📊 **Before vs After Examples**
+**4°C temperature swing (18°C to 22°C):**
+- **Old correction**: ±0.0052 SG change (massive)
+- **New correction**: ±0.0016 SG change (proper)
+- **During stalled fermentation**: ±0.0003 SG change (reduced sensitivity)
+
+### 🎯 **Why This Matters**
+This explains the user's observation that temperature-corrected gravity was tracking temperature changes exactly during stalled fermentation. The correction was so large it dominated the reading, making temperature the primary factor instead of actual fermentation progress.
+
+### ✅ **Combined Features**
+- **Proper temperature correction factor** (0.0004 per °C)
+- **Smart stalled fermentation logic** (reduced correction when fermentation stops)
+- **Accurate brewing calculations** (ABV, attenuation, fermentation rate)
+- **Stable end-of-fermentation readings**
+
+**This is a critical accuracy fix that affects all gravity-based calculations and fermentation monitoring.**
+
 ## [2.3.9] - 2025-07-25
 
-### 🔧 **Fix: Temperature Correction During Stalled Fermentation**
+### 🔧 **Fix: Temperature Correction During Stalled Fermentation** *(Superseded by v2.4.0)*
 - **Fixed temperature-corrected gravity bouncing**: Temperature corrected gravity no longer tracks temperature changes when fermentation is stalled
 - **Smart correction reduction**: Reduces temperature correction sensitivity by 80% when fermentation rate is very low (stalled)
 - **Improved end-of-fermentation accuracy**: Temperature corrected gravity now stays stable when fermentation is complete
