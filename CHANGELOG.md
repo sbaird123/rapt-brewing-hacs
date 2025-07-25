@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.9] - 2025-07-25
+
+### 🔧 **Fix: Temperature Correction During Stalled Fermentation**
+- **Fixed temperature-corrected gravity bouncing**: Temperature corrected gravity no longer tracks temperature changes when fermentation is stalled
+- **Smart correction reduction**: Reduces temperature correction sensitivity by 80% when fermentation rate is very low (stalled)
+- **Improved end-of-fermentation accuracy**: Temperature corrected gravity now stays stable when fermentation is complete
+- **Prevents false activity**: Eliminates the appearance of continued fermentation activity from temperature fluctuations alone
+
+### 🍺 **Why This Matters**
+When fermentation stalls, the raw gravity reading still changes with temperature, but the actual fermentable content is stable. The old temperature correction made it appear that fermentation was still active when it was just temperature-driven density changes.
+
+### 📊 **Technical Details**
+- **Very stalled fermentation** (≤2× stuck threshold): 20% of normal temperature correction
+- **Slow fermentation** (≤slow threshold): 60% of normal temperature correction  
+- **Active fermentation**: Full temperature correction as before
+- **Unified correction logic**: Both sensor and coordinator use the same improved algorithm
+
 ## [2.3.8] - 2025-07-18
 
 ### 🔧 **Fix: Import Error in Fermentation Activity Sensor**
