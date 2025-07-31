@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.3] - 2025-07-25
+
+### 📊 **New Feature: Clean Session Start**
+- **Reset sensor values** when starting a new session to create clean history graphs
+- **Clear data points and alerts** from previous sessions
+- **Visual break in graphs** - no more confusing carryover data from previous fermentations
+- **Fresh start monitoring** - each new session begins with clean sensor history
+
+### 🎯 **How It Works**
+When starting a new brewing session:
+1. **Sensor values reset** to `None` (gravity, temperature, ABV, etc.)
+2. **Data points cleared** - removes all previous fermentation data
+3. **Alerts cleared** - starts with a clean alert slate
+4. **History graphs show gap** - clear visual separation between sessions
+5. **New data appears** as soon as RAPT Pill provides first reading
+
+### 🚀 **Benefits**
+- **Clean graphs** that only show current fermentation progress
+- **No confusion** from previous session data
+- **Easy to track** individual fermentation performance
+- **Professional monitoring** with clear session boundaries
+
+## [2.5.2] - 2025-07-25
+
+### 🔧 **Hotfix: Syntax Error**
+- **Fixed indentation error** in coordinator.py that prevented integration from loading
+- **Quick fix** for issue introduced in v2.5.1
+
 ## [2.5.1] - 2025-07-25
 
 ### 🔔 **Fix: Stuck Fermentation Notification Spam**

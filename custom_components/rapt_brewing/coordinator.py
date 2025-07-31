@@ -495,8 +495,34 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         self.data.add_session(session)
         self.data.set_current_session(session_id)
         
+        # Reset sensor values to create a clean break in history graphs
+        await self._reset_sensor_values()
+        
         await self._save_data()
         return session_id
+    
+    async def _reset_sensor_values(self) -> None:
+        """Reset sensor values to create a clean break in history graphs when starting a new session."""
+        if not self.data.current_session:
+            return
+        
+        session = self.data.current_session
+        
+        # Temporarily clear current values to create a gap in the history
+        session.current_gravity = None
+        session.current_temperature = None
+        session.alcohol_percentage = None
+        session.attenuation = None
+        session.fermentation_rate = None
+        
+        # Clear data points to start fresh
+        session.data_points = []
+        session.alerts = []
+        
+        # Trigger a coordinator update to push None values to sensors
+        await self.async_request_refresh()
+        
+        _LOGGER.info("RAPT SESSION: Reset sensor values for new session: %s", session.name)
     
     async def stop_session(self, session_id: str) -> None:
         """Stop a brewing session."""
