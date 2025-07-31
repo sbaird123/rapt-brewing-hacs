@@ -427,52 +427,52 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         
         _LOGGER.warning("RAPT ALERT TRIGGERED: Type=%s, Message=%s, Session=%s", 
                        alert_type, message, session.name)
-            
-            # Send Home Assistant persistent notification
+        
+        # Send Home Assistant persistent notification
+        try:
+            await self.hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "message": message,
+                    "title": f"RAPT Brewing Alert - {session.name}",
+                    "notification_id": f"rapt_brewing_{alert_type}_{session.id}",
+                },
+            )
+        except Exception as e:
+            _LOGGER.warning("RAPT ALERT: Failed to send persistent notification: %s", e)
+        
+        # Send external notification if configured
+        notification_service = self.entry.options.get(CONF_NOTIFICATION_SERVICE)
+        if notification_service and notification_service.strip():
             try:
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {
-                        "message": message,
-                        "title": f"RAPT Brewing Alert - {session.name}",
-                        "notification_id": f"rapt_brewing_{alert_type}_{session.id}",
-                    },
-                )
+                # Parse service domain and name
+                service_parts = notification_service.split(".", 1)
+                if len(service_parts) == 2:
+                    domain, service_name = service_parts
+                    
+                    await self.hass.services.async_call(
+                        domain,
+                        service_name,
+                        {
+                            "title": f"🍺 RAPT Brewing Alert - {session.name}",
+                            "message": message,
+                            "data": {
+                                "tag": "rapt_brewing",
+                                "group": "brewing",
+                                "alert_type": alert_type,
+                                "session_name": session.name,
+                                "session_id": session.id,
+                            }
+                        },
+                    )
+                    _LOGGER.info("RAPT ALERT: Sent external notification via %s", notification_service)
+                else:
+                    _LOGGER.warning("RAPT ALERT: Invalid notification service format: %s", notification_service)
             except Exception as e:
-                _LOGGER.warning("RAPT ALERT: Failed to send persistent notification: %s", e)
-            
-            # Send external notification if configured
-            notification_service = self.entry.options.get(CONF_NOTIFICATION_SERVICE)
-            if notification_service and notification_service.strip():
-                try:
-                    # Parse service domain and name
-                    service_parts = notification_service.split(".", 1)
-                    if len(service_parts) == 2:
-                        domain, service_name = service_parts
-                        
-                        await self.hass.services.async_call(
-                            domain,
-                            service_name,
-                            {
-                                "title": f"🍺 RAPT Brewing Alert - {session.name}",
-                                "message": message,
-                                "data": {
-                                    "tag": "rapt_brewing",
-                                    "group": "brewing",
-                                    "alert_type": alert_type,
-                                    "session_name": session.name,
-                                    "session_id": session.id,
-                                }
-                            },
-                        )
-                        _LOGGER.info("RAPT ALERT: Sent external notification via %s", notification_service)
-                    else:
-                        _LOGGER.warning("RAPT ALERT: Invalid notification service format: %s", notification_service)
-                except Exception as e:
-                    _LOGGER.warning("RAPT ALERT: Failed to send external notification via %s: %s", notification_service, e)
-            
-            _LOGGER.warning("RAPT ALERT NOTIFICATION SENT: %s", message)
+                _LOGGER.warning("RAPT ALERT: Failed to send external notification via %s: %s", notification_service, e)
+        
+        _LOGGER.warning("RAPT ALERT NOTIFICATION SENT: %s", message)
     
     async def start_session(self, name: str, recipe: str | None = None, 
                           original_gravity: float | None = None,
