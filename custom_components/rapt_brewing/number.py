@@ -45,24 +45,6 @@ NUMBER_TYPES: tuple[NumberEntityDescription, ...] = (
         native_step=0.1,
         native_unit_of_measurement="°C",
     ),
-    NumberEntityDescription(
-        key="starting_pressure",
-        name="Starting Pressure",
-        icon="mdi:gauge",
-        native_min_value=0.0,
-        native_max_value=50.0,
-        native_step=0.1,
-        native_unit_of_measurement="PSI",
-    ),
-    NumberEntityDescription(
-        key="current_pressure",
-        name="Current Pressure",
-        icon="mdi:gauge-full",
-        native_min_value=0.0,
-        native_max_value=50.0,
-        native_step=0.1,
-        native_unit_of_measurement="PSI",
-    ),
 )
 
 
@@ -110,10 +92,6 @@ class RAPTBrewingNumber(RAPTBrewingEntity, NumberEntity):
             return session.original_gravity
         elif self.entity_description.key == "target_temperature":
             return session.target_temperature
-        elif self.entity_description.key == "starting_pressure":
-            return session.starting_pressure
-        elif self.entity_description.key == "current_pressure":
-            return session.current_pressure
         
         return None
 
@@ -134,16 +112,6 @@ class RAPTBrewingNumber(RAPTBrewingEntity, NumberEntity):
         elif self.entity_description.key == "target_temperature":
             session.target_temperature = value
             _LOGGER.warning("RAPT NUMBER: Set target temperature to %.1f°C for session: %s", value, session.name)
-        elif self.entity_description.key == "starting_pressure":
-            session.starting_pressure = value
-            # Enable pressure fermentation mode if starting pressure is set (even if 0)
-            session.pressure_fermentation = True
-            _LOGGER.warning("RAPT NUMBER: Set starting pressure to %.1f PSI for session: %s", value, session.name)
-        elif self.entity_description.key == "current_pressure":
-            session.current_pressure = value
-            # Enable pressure fermentation mode if current pressure is being tracked
-            session.pressure_fermentation = True
-            _LOGGER.warning("RAPT NUMBER: Set current pressure to %.1f PSI for session: %s", value, session.name)
         
         await self.coordinator._save_data()
         await self.coordinator.async_request_refresh()

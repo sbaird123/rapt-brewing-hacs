@@ -5,9 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] - 2025-07-25
+
+### 🔔 **Fix: Stuck Fermentation Notification Spam**
+- **One-time stuck fermentation alerts**: Stuck fermentation now only alerts once per session instead of every hour
+- **Cleaned up dashboard configurations**: Removed all pressure-related entities from dashboard YAML files
+- **Reduced notification noise**: No more spam of 22+ stuck fermentation notifications
+
+### 🧹 **Dashboard Cleanup**
+- **Removed pressure entities** from desktop dashboard configuration
+- **Removed pressure entities** from mobile dashboard configuration  
+- **Cleaner dashboard layout** without defunct pressure monitoring sections
+
+### 🎯 **Alert Logic Improvement**
+- **Stuck fermentation**: Only alerts once per session (not recurring)
+- **Other alerts** (temperature, battery): Still check for duplicates within 1 hour
+- **Prevents notification spam** while maintaining important alerts
+
+## [2.5.0] - 2025-07-25
+
+### 🧹 **MAJOR CLEANUP: Removed Pressure Fermentation Features**
+- **Removed pressure correction sensors**: No more pressure-corrected gravity or dissolved CO2 sensors
+- **Removed pressure number entities**: No more starting/current pressure controls
+- **Simplified data structure**: Removed all pressure-related fields from session data
+- **Cleaner integration**: Focus on core temperature and fermentation monitoring
+
+### 🎯 **Why This Change**
+Analysis showed pressure corrections were **practically irrelevant** for brewing accuracy:
+- **10 PSI correction**: Only 0.0001 SG difference (negligible)
+- **30 PSI correction**: Only 0.0004 SG difference (still tiny)
+- **ABV impact**: Always <0.01% difference
+- **Industry standard**: Most brewers degas samples or ignore dissolved CO2
+
+### 📊 **What Was Removed**
+- `current_gravity_pressure_corrected` sensor
+- `dissolved_co2` sensor  
+- `starting_pressure` number entity
+- `current_pressure` number entity
+- All CO2 compensation formulas and calculations
+- Pressure fermentation UI options
+
+### ✅ **What Remains**
+- **Temperature correction** (much more important - up to 0.005 SG difference)
+- **Core fermentation monitoring** (gravity, temperature, battery, signals)
+- **Fermentation activity sensor** with scientifically accurate thresholds
+- **Smart stalled fermentation logic** for temperature corrections
+- **All brewing calculations** (ABV, attenuation, fermentation rate)
+
+### 🚀 **Benefits**
+- **Simpler interface**: Less clutter, focus on what matters
+- **Better performance**: Fewer calculations and entities
+- **Easier maintenance**: Less complex code
+- **Accurate monitoring**: Temperature correction is the only correction that significantly impacts brewing accuracy
+
+**This version focuses on the essential brewing monitoring features that actually affect your brewing decisions.**
+
 ## [2.4.0] - 2025-07-25
 
-### 🚨 **MAJOR FIX: Corrected Temperature Correction Formula**
+### 🚨 **MAJOR FIX: Corrected Temperature Correction Formula** *(Superseded by v2.5.0)*
 - **Fixed temperature correction factor**: Reduced from 0.00130 to 0.0004 per °C (proper factor for beer wort)
 - **Eliminated excessive temperature corrections**: Temperature-corrected gravity no longer shows extreme fluctuations
 - **Accurate brewing science**: Now uses the correct temperature coefficient for beer/wort density

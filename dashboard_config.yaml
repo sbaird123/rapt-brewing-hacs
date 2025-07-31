@@ -30,8 +30,6 @@ cards:
             name: Current Gravity (Raw)
           - entity: sensor.rapt_brewing_session_manager_current_gravity_temp_corrected
             name: Current Gravity (Temp Corrected)
-          - entity: sensor.rapt_brewing_session_manager_current_gravity_pressure_corrected
-            name: Current Gravity (Pressure Corrected)
           - entity: number.rapt_brewing_session_manager_target_gravity
             name: Target Gravity
         show_header_toggle: false
@@ -44,21 +42,7 @@ cards:
             name: Target Temperature
         show_header_toggle: false
 
-  # Second Row - Pressure monitoring
-  - type: horizontal-stack
-    cards:
-      - type: entities
-        title: Pressure Fermentation
-        entities:
-          - entity: number.rapt_brewing_session_manager_starting_pressure
-            name: Starting Pressure
-          - entity: number.rapt_brewing_session_manager_current_pressure
-            name: Current Pressure
-          - entity: sensor.rapt_brewing_session_manager_dissolved_co2
-            name: Dissolved CO2
-        show_header_toggle: false
-
-  # Third Row - Progress and device info
+  # Second Row - Progress and device info
   - type: horizontal-stack
     cards:
       - type: entities
@@ -102,8 +86,6 @@ cards:
         name: Current Gravity (Raw)
       - entity: sensor.rapt_brewing_session_manager_current_gravity_temp_corrected
         name: Current Gravity (Temp Corrected)
-      - entity: sensor.rapt_brewing_session_manager_current_gravity_pressure_corrected
-        name: Current Gravity (Pressure Corrected)
       - entity: sensor.rapt_brewing_session_manager_target_gravity
         name: Target Gravity
     hours_to_show: 168
