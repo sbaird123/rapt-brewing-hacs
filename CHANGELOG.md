@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.4] - 2025-07-25
+
+### 🔧 **Fix: Stabilize Temperature Correction**
+- **Simplified temperature correction formula**: Removed complex variable reduction logic causing erratic readings
+- **Consistent corrections**: Temperature-corrected gravity now shows smooth, stable readings
+- **Scientific accuracy maintained**: Uses proven 0.0004 per °C coefficient (thermal expansion of aqueous solutions)
+- **ASBC standard compliance**: 20°C calibration temperature per American Society of Brewing Chemists
+
+### 🔬 **What Was Wrong**
+The temperature correction was using complex logic that varied the correction factor based on fermentation rate, causing:
+- **Erratic corrections**: Wild fluctuations in temp-corrected gravity readings
+- **Inconsistent application**: Sometimes full correction, sometimes reduced correction
+- **Graph noise**: Jagged temperature-corrected gravity line despite stable temperature
+
+### ✅ **What's Fixed**
+- **Simple, consistent formula**: `Corrected_Gravity = Raw_Gravity + (Temperature - 20°C) × 0.0004`
+- **Stable readings**: Temperature-corrected gravity now tracks smoothly with raw gravity
+- **Scientific basis**: Formula based on thermal expansion coefficient of water/wort solutions
+- **Professional standard**: Matches brewing industry temperature correction practices
+
+### 📊 **Expected Results**
+- **Smooth temperature correction line** that closely follows raw gravity
+- **Small, consistent corrections** (typically ±0.002 SG for normal temperature variations)
+- **Reliable brewing calculations** using stable temperature-corrected values
+
 ## [2.5.3] - 2025-07-25
 
 ### 📊 **New Feature: Clean Session Start**

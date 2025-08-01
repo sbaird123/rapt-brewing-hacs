@@ -274,21 +274,6 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         
         temp_difference = session.current_temperature - calibration_temp
         correction = temp_difference * temp_correction_factor
-        
-        # Reduce temperature correction sensitivity when fermentation is stalled
-        # This prevents the corrected gravity from bouncing with temperature when fermentation is done
-        if session.fermentation_rate is not None and len(session.data_points) > 10:
-            fermentation_activity = abs(session.fermentation_rate)
-            
-            # If fermentation is very slow (stalled), reduce temperature correction by 80%
-            # This prevents temperature fluctuations from making it look like gravity is still changing
-            if fermentation_activity < FERMENTATION_RATE_STUCK * 2:  # Very stalled
-                correction = correction * 0.2  # Only 20% of normal temperature correction
-                _LOGGER.debug("RAPT TEMP CORRECTION: Reducing correction for stalled fermentation (rate=%.6f)", fermentation_activity)
-            elif fermentation_activity < FERMENTATION_RATE_SLOW:  # Slow fermentation
-                correction = correction * 0.6  # 60% of normal temperature correction
-                _LOGGER.debug("RAPT TEMP CORRECTION: Reducing correction for slow fermentation (rate=%.6f)", fermentation_activity)
-        
         corrected_gravity = session.current_gravity + correction
         
         # Safety check: prevent ridiculous temperature corrections
