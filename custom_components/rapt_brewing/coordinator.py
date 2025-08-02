@@ -268,11 +268,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             return None
             
         # Temperature correction formula - remove temperature effects to show actual density
-        # Raw gravity changes due to thermal expansion/contraction - we want to remove this effect
-        # When liquid is cold, it contracts and reads artificially HIGH - subtract this effect
-        # When liquid is warm, it expands and reads artificially LOW - add back this effect
         calibration_temp = 20.0  # °C (reference temperature)
-        temp_correction_factor = 0.0004  # per °C (thermal expansion coefficient)
+        temp_correction_factor = 0.00013  # per °C (scientific literature)
         
         temp_difference = session.current_temperature - calibration_temp
         thermal_effect = temp_difference * temp_correction_factor
@@ -303,15 +300,15 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         if gravity is None or temperature is None:
             return None
             
-        # Temperature correction formula (calibrated at 20°C)
-        # When temperature increases, liquid density decreases, hydrometer reads lower
-        # Correction: add temperature effect to get true gravity at calibration temp
-        calibration_temp = 20.0  # °C
+        # Temperature correction formula - remove temperature effects to show actual density
+        calibration_temp = 20.0  # °C (reference temperature)
         temp_correction_factor = 0.00013  # per °C (scientific literature)
         
         temp_difference = temperature - calibration_temp
-        correction = temp_difference * temp_correction_factor
-        corrected_gravity = gravity + correction
+        thermal_effect = temp_difference * temp_correction_factor
+        
+        # Remove thermal expansion/contraction effects to get true density
+        corrected_gravity = gravity - thermal_effect
         
         return corrected_gravity
     

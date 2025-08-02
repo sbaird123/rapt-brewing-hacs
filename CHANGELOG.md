@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.7] - 2025-08-02
+
+### 🔧 **Critical Fix: Temperature Correction Consistency**
+- **Fixed duplicate temperature correction methods**: Both methods now use the same scientific coefficient (0.00013 per °C)
+- **Eliminated old 0.0004 factor**: Removed inconsistent temperature correction that was still being used by sensors
+- **Consistent correction formula**: All temperature corrections now use the scientifically accurate factor throughout the codebase
+- **Fixed calculation direction**: Ensured both methods subtract thermal effects to show actual density (not add)
+
+### 🧪 **What Was Wrong**
+Two different temperature correction methods existed:
+- **Main method (_get_temperature_corrected_gravity)**: Still used old 0.0004 factor (200% too large)
+- **Helper method (_apply_temp_correction_to_gravity)**: Used correct 0.00013 factor but with wrong calculation direction
+
+### ✅ **What's Fixed**
+- **Unified coefficient**: Both methods now use 0.00013 per °C (scientific literature)
+- **Consistent calculation**: `True_Density = Raw_Gravity - (Temperature - 20°C) × 0.00013`
+- **Proper sensor readings**: Temperature-corrected gravity sensor now shows realistic values
+- **Code consistency**: No more conflicting temperature correction implementations
+
+### 🍺 **Expected Results**
+**Your cold crash example (9.3°C, raw gravity 1.0086):**
+- **Old result**: 1.0129 (overcorrected with 0.0004 factor)
+- **New result**: ~1.010 (realistic correction with 0.00013 factor)
+
+**This fix ensures the temperature correction actually uses the scientifically researched coefficient!**
+
 ## [2.5.6] - 2025-07-25
 
 ### 🔬 **Fix: Use Scientifically Accurate Temperature Correction Factor**
