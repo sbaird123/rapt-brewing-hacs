@@ -267,23 +267,27 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         if not session.current_gravity or not session.current_temperature:
             return None
             
-        # Temperature correction formula (calibrated at 20°C)
-        # When temperature increases, liquid density decreases, hydrometer reads lower
-        calibration_temp = 20.0  # °C
-        temp_correction_factor = 0.0004  # per °C (proper factor for beer wort)
+        # Temperature correction formula - remove temperature effects to show actual density
+        # Raw gravity changes due to thermal expansion/contraction - we want to remove this effect
+        # When liquid is cold, it contracts and reads artificially HIGH - subtract this effect
+        # When liquid is warm, it expands and reads artificially LOW - add back this effect
+        calibration_temp = 20.0  # °C (reference temperature)
+        temp_correction_factor = 0.0004  # per °C (thermal expansion coefficient)
         
         temp_difference = session.current_temperature - calibration_temp
-        correction = temp_difference * temp_correction_factor
-        corrected_gravity = session.current_gravity + correction
+        thermal_effect = temp_difference * temp_correction_factor
+        
+        # Remove thermal expansion/contraction effects to get true density
+        corrected_gravity = session.current_gravity - thermal_effect
         
         # Safety check: prevent ridiculous temperature corrections
-        if abs(correction) > 0.020:  # Max 20 points correction
+        if abs(thermal_effect) > 0.020:  # Max 20 points correction
             _LOGGER.warning("RAPT TEMP CORRECTION: Extreme correction detected! Raw=%.4f, Temp=%.2f°C, Correction=%.4f - using raw gravity", 
-                           session.current_gravity, session.current_temperature, correction)
+                           session.current_gravity, session.current_temperature, thermal_effect)
             return session.current_gravity
         
         _LOGGER.debug("RAPT TEMP CORRECTION: Raw=%.4f, Temp=%.2f°C, Correction=%.4f, Corrected=%.4f", 
-                     session.current_gravity, session.current_temperature, correction, corrected_gravity)
+                     session.current_gravity, session.current_temperature, thermal_effect, corrected_gravity)
         
         return corrected_gravity
     
@@ -303,7 +307,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         # When temperature increases, liquid density decreases, hydrometer reads lower
         # Correction: add temperature effect to get true gravity at calibration temp
         calibration_temp = 20.0  # °C
-        temp_correction_factor = 0.0004  # per °C (proper factor for beer wort)
+        temp_correction_factor = 0.00013  # per °C (scientific literature)
         
         temp_difference = temperature - calibration_temp
         correction = temp_difference * temp_correction_factor
