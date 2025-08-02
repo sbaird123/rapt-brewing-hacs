@@ -14,9 +14,8 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 ## Features
 
 - **🍺 Session Monitoring**: Start/stop sessions with auto-detection of original gravity
-- **📊 Advanced Calculations**: Real-time ABV, attenuation, fermentation rate with temperature and pressure correction
-- **⚡ Pressure Fermentation**: CO2 compensation, dissolved gas tracking, pressure-corrected gravity readings
-- **🔔 Smart Alerts**: Stuck fermentation, temperature warnings, completion detection, low battery
+- **📊 Advanced Calculations**: Real-time ABV, attenuation, fermentation rate with scientifically accurate temperature correction
+- **🔔 Smart Alerts**: Context-aware stuck fermentation, temperature warnings, completion detection, low battery
 - **📈 Comprehensive Data**: 20+ sensors including accelerometer and fermentation activity
 - **📱 Dashboard Ready**: Complete mobile and desktop Lovelace configurations
 
@@ -40,9 +39,9 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 ## Usage
 
 1. **Start Session**: Click "Start New Session" button (auto-creates timestamp name)
-2. **Set Parameters**: Original gravity (auto-detected), target gravity, target temperature, pressure settings
-3. **Monitor**: Real-time gravity, temperature, ABV%, attenuation%, fermentation rate, pressure-corrected readings
-4. **Alerts**: Automatic notifications for stuck fermentation, temperature issues, low battery
+2. **Set Parameters**: Original gravity (auto-detected), target gravity, target temperature
+3. **Monitor**: Real-time gravity, temperature, ABV%, attenuation%, fermentation rate, temperature-corrected readings
+4. **Alerts**: Context-aware notifications for stuck fermentation, temperature issues, low battery
 
 ## Dashboard Configuration
 
@@ -77,36 +76,30 @@ The dashboard shows:
 
 **📋 [Complete Sensor List →](SENSORS.md)**
 
-## Pressure Fermentation
+## Temperature Correction
 
-The integration supports modern pressure fermentation techniques with advanced CO2 compensation:
+The integration uses scientifically accurate temperature correction based on research literature:
 
 ### Features
-- **CO2 Solubility Compensation**: Accounts for dissolved CO2 in gravity readings
-- **Temperature-Dependent Calculations**: CO2 solubility adjusts based on fermentation temperature  
-- **Pressure Monitoring**: Track starting and current vessel pressure (PSI)
-- **True Gravity Readings**: Removes CO2 bias for accurate fermentation tracking
-- **Dissolved CO2 Tracking**: Monitor CO2 levels throughout fermentation
+- **Scientific Accuracy**: Uses 0.00013 per °C coefficient from CRC Handbook of Chemistry and Physics
+- **True Density Calculation**: Removes thermal expansion/contraction effects to show actual liquid density
+- **Brewing-Focused**: Perfect for accurate ABV calculations and fermentation tracking
+- **Realistic Corrections**: Small, accurate adjustments (typically ±0.002 SG for normal temperature variations)
 
-### Usage
-1. **Enable Pressure Mode**: Set starting pressure when creating a session
-2. **Monitor Pressure**: Update current pressure as fermentation progresses
-3. **View Corrected Data**: Integration automatically calculates pressure-corrected gravity
-4. **Track CO2 Levels**: Monitor dissolved CO2 for carbonation estimates
-
-### Calculations
-- **CO2 Solubility**: ~1.7 g/L per PSI at 20°C (temperature adjusted)
-- **Gravity Correction**: Removes CO2 contribution (~0.0004 SG per gram CO2)
-- **Temperature Factor**: CO2 solubility decreases 2% per °C above 20°C
+### How It Works
+- **Cold liquid contracts** → reads artificially HIGH → correction removes thermal contraction effect
+- **Warm liquid expands** → reads artificially LOW → correction removes thermal expansion effect
+- **Formula**: `True_Density = Raw_Gravity - (Temperature - 20°C) × 0.00013`
+- **Result**: Temperature-corrected gravity shows actual fermentation state, not thermal artifacts
 
 ## Alerts & Notifications
 
 ### Alert Types
-- **Stuck Fermentation**: No gravity change for 48+ hours
-- **Temperature High**: Above 30°C (86°F)
-- **Temperature Low**: Below 10°C (50°F)
+- **Stuck Fermentation**: No gravity change for 48+ hours (once per session)  
+- **Temperature High**: Above 30°C (86°F) during fermentation (once per hour)
+- **Temperature Low**: Below 10°C (50°F) during early/mid fermentation only (cold crash at 70%+ attenuation is expected)
 - **Fermentation Complete**: Target gravity reached
-- **Low Battery**: Below 20%
+- **Low Battery**: Below 20% (only after battery calibration)
 
 ### Notification Configuration
 Alerts automatically create Home Assistant persistent notifications in the UI. For external notifications:

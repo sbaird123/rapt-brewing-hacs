@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.8] - 2025-08-02
+
+### 🔔 **Smart Temperature Alerts - No More Cold Crash Spam**
+- **Context-aware cold temperature alerts**: Only alerts if attenuation < 70% (early/mid fermentation)
+- **Cold crash detection**: No alerts when attenuation ≥ 70% since cold crashes are expected at fermentation end
+- **Hot temperature alerts unchanged**: Still alerts for temperatures > 30°C during any phase
+- **Prevents notification spam**: No more 6+ cold temperature alerts during expected cold crashes
+
+### 📚 **Updated Documentation**
+- **Removed pressure fermentation references**: Updated README to reflect v2.5.0+ changes (pressure features removed)
+- **Added temperature correction section**: Explains scientific 0.00013 coefficient and how it works
+- **Updated alert descriptions**: Documents new context-aware behavior and alert frequencies
+- **Accurate feature list**: Features now match current integration capabilities
+
+### 🍺 **Alert Logic Improvements**
+**Temperature Low Alerts:**
+- **Early fermentation (< 70% attenuation)**: Alerts for cold temperatures (potential issue)
+- **Late fermentation (≥ 70% attenuation)**: No alerts (cold crash expected and normal)
+- **Message updated**: "Temperature too low during fermentation" (clarifies context)
+
+**Other Alerts Unchanged:**
+- **Stuck fermentation**: Once per session
+- **High temperature**: Once per hour  
+- **Low battery**: Once per hour (after calibration)
+- **Fermentation complete**: Once per hour
+
+**Perfect for real brewing workflows where cold crashes happen at 70-85% attenuation!**
+
 ## [2.5.7] - 2025-08-02
 
 ### 🔧 **Critical Fix: Temperature Correction Consistency**

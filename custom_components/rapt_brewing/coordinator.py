@@ -337,20 +337,25 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                         "Fermentation appears to be stuck - no gravity change in 48 hours"
                     )
         
-        # Check temperature alerts
+        # Check temperature alerts - only alert when conditions are concerning
         if ble_data.temperature is not None:
+            # Hot temperature during active fermentation is concerning
             if ble_data.temperature > DEFAULT_TEMPERATURE_HIGH_THRESHOLD:
                 await self._add_alert(
                     session,
                     ALERT_TYPE_TEMPERATURE_HIGH,
                     f"Temperature too high: {ble_data.temperature:.1f}°C"
                 )
+            # Cold temperature alert only if fermentation isn't near completion (cold crash expected)
             elif ble_data.temperature < DEFAULT_TEMPERATURE_LOW_THRESHOLD:
-                await self._add_alert(
-                    session,
-                    ALERT_TYPE_TEMPERATURE_LOW,
-                    f"Temperature too low: {ble_data.temperature:.1f}°C"
-                )
+                # Only alert if attenuation < 70% (early/mid fermentation)
+                # Cold crash at 70%+ attenuation is expected and normal
+                if session.attenuation is None or session.attenuation < 70.0:
+                    await self._add_alert(
+                        session,
+                        ALERT_TYPE_TEMPERATURE_LOW,
+                        f"Temperature too low during fermentation: {ble_data.temperature:.1f}°C"
+                    )
         
         # Check for fermentation completion
         if (session.target_gravity and session.current_gravity and 
