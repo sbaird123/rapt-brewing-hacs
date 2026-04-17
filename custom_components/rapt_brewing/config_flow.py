@@ -9,8 +9,20 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import selector
 
-from .const import DOMAIN, CONF_RAPT_DEVICE_ID, CONF_NOTIFICATION_SERVICE
+from .const import (
+    DOMAIN,
+    CONF_RAPT_DEVICE_ID,
+    CONF_NOTIFICATION_SERVICE,
+    CONF_SOURCE_TYPE,
+    CONF_GRAVITY_ENTITY,
+    CONF_TEMPERATURE_ENTITY,
+    CONF_BATTERY_ENTITY,
+    CONF_SIGNAL_ENTITY,
+    SOURCE_TYPE_BLUETOOTH,
+    SOURCE_TYPE_ENTITY,
+)
 
 # BLE constants for discovery
 RAPT_MANUFACTURER_ID = 16722  # 0x4152 - "RA" from RAPT
@@ -19,18 +31,61 @@ RAPT_DATA_START = [80, 84]  # "PT" - Pill Telemetry
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
+
+SOURCE_TYPE_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_RAPT_DEVICE_ID): cv.string,
+        vol.Required(CONF_SOURCE_TYPE, default=SOURCE_TYPE_BLUETOOTH): vol.In(
+            {
+                SOURCE_TYPE_BLUETOOTH: "Direct Bluetooth",
+                SOURCE_TYPE_ENTITY: "Home Assistant entities (e.g. Shelly BLE proxy)",
+            }
+        )
     }
 )
+
+
+def _entity_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    """Schema for choosing HA entities as the data source."""
+    defaults = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_GRAVITY_ENTITY,
+                default=defaults.get(CONF_GRAVITY_ENTITY),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+            vol.Required(
+                CONF_TEMPERATURE_ENTITY,
+                default=defaults.get(CONF_TEMPERATURE_ENTITY),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="sensor", device_class="temperature"
+                )
+            ),
+            vol.Required(
+                CONF_BATTERY_ENTITY,
+                default=defaults.get(CONF_BATTERY_ENTITY),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="sensor", device_class="battery"
+                )
+            ),
+            vol.Optional(
+                CONF_SIGNAL_ENTITY,
+                default=defaults.get(CONF_SIGNAL_ENTITY, vol.UNDEFINED),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+        }
+    )
 
 
 class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for RAPT Brewing."""
 
     VERSION = 1
-    
+
     @staticmethod
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
@@ -43,118 +98,139 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
+        """Ask the user which data source to use."""
+        if user_input is not None:
+            if user_input[CONF_SOURCE_TYPE] == SOURCE_TYPE_ENTITY:
+                return await self.async_step_entity()
+            return await self.async_step_bluetooth()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=SOURCE_TYPE_SCHEMA,
+        )
+
+    async def async_step_bluetooth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a direct Bluetooth data source."""
         errors: dict[str, str] = {}
-        
-        # Discover RAPT devices via Bluetooth
+
         discovered_devices = await self._async_discover_rapt_devices()
-        
+
         if user_input is not None:
             rapt_device_id = user_input[CONF_RAPT_DEVICE_ID]
-            
-            # Check for existing entries
+
             await self.async_set_unique_id(rapt_device_id)
             self._abort_if_unique_id_configured()
-            
-            # Determine title based on discovered device or manual entry
+
             if rapt_device_id in self._discovered_devices:
-                device_info = self._discovered_devices[rapt_device_id]
                 title = f"RAPT Pill ({rapt_device_id[:8]}...)"
             else:
                 title = f"RAPT Brewing - {rapt_device_id}"
-            
-            # Create the config entry
+
             return self.async_create_entry(
                 title=title,
-                data=user_input,
+                data={
+                    CONF_SOURCE_TYPE: SOURCE_TYPE_BLUETOOTH,
+                    CONF_RAPT_DEVICE_ID: rapt_device_id,
+                },
             )
 
-        # Create dynamic schema with discovered devices
         if discovered_devices:
             device_options = {
                 address: f"RAPT Pill ({address[:8]}...)"
                 for address in discovered_devices.keys()
             }
             device_options["manual"] = "Enter manually"
-            
-            schema = vol.Schema({
-                vol.Required(CONF_RAPT_DEVICE_ID): vol.In(device_options)
-            })
+            schema = vol.Schema(
+                {vol.Required(CONF_RAPT_DEVICE_ID): vol.In(device_options)}
+            )
         else:
-            schema = STEP_USER_DATA_SCHEMA
+            schema = vol.Schema({vol.Required(CONF_RAPT_DEVICE_ID): cv.string})
 
         return self.async_show_form(
-            step_id="user",
+            step_id="bluetooth",
             data_schema=schema,
             errors=errors,
             description_placeholders={
                 "devices_count": str(len(discovered_devices))
-            }
+            },
+        )
+
+    async def async_step_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure an entity-based data source."""
+        if user_input is not None:
+            unique_id = f"entity:{user_input[CONF_GRAVITY_ENTITY]}"
+            await self.async_set_unique_id(unique_id)
+            self._abort_if_unique_id_configured()
+
+            return self.async_create_entry(
+                title=f"RAPT Brewing ({user_input[CONF_GRAVITY_ENTITY]})",
+                data={CONF_SOURCE_TYPE: SOURCE_TYPE_ENTITY, **user_input},
+            )
+
+        return self.async_show_form(
+            step_id="entity",
+            data_schema=_entity_schema(),
         )
 
     async def _async_discover_rapt_devices(self) -> dict[str, Any]:
         """Discover RAPT devices via Bluetooth."""
         discovered_devices = {}
-        
+
         try:
-            # Import Bluetooth functions at runtime to avoid blocking imports
             from homeassistant.components.bluetooth import async_discovered_service_info
-            
-            # Get all discovered Bluetooth service info
+
             service_infos = async_discovered_service_info(self.hass)
-            
+
             for service_info in service_infos:
                 if self._is_rapt_device(service_info):
                     discovered_devices[service_info.address] = service_info
                     self._discovered_devices[service_info.address] = service_info
-            
+
             _LOGGER.debug("Discovered %d RAPT devices: %s", len(discovered_devices), list(discovered_devices.keys()))
-            
+
         except Exception as e:
             _LOGGER.warning("Could not discover Bluetooth devices: %s", e)
-        
+
         return discovered_devices
-    
+
     def _is_rapt_device(self, service_info: Any) -> bool:
         """Check if a Bluetooth device is a RAPT Pill."""
         try:
             manufacturer_data = service_info.manufacturer_data
-            
-            # Debug: Log what we're checking
-            _LOGGER.debug("Checking device %s with manufacturer data: %s", 
+
+            _LOGGER.debug("Checking device %s with manufacturer data: %s",
                          service_info.address, manufacturer_data)
-            
-            
-            # Check for RAPT manufacturer ID with correct data start  
+
             if RAPT_MANUFACTURER_ID in manufacturer_data:
                 data = manufacturer_data[RAPT_MANUFACTURER_ID]
                 if len(data) >= 2 and list(data[:2]) == RAPT_DATA_START:
                     return True
-            
-            # Check for KegLand manufacturer ID
+
             if KEGLAND_MANUFACTURER_ID in manufacturer_data:
                 return True
-            
-            # Check device name patterns
+
             name = getattr(service_info, 'name', '') or ""
             if name and ("rapt" in name.lower() or "pill" in name.lower()):
                 return True
-            
-            # Check service UUIDs
+
             service_uuids = getattr(service_info, 'service_uuids', []) or []
             rapt_service = "0000fe61-0000-1000-8000-00805f9b34fb"
             if rapt_service in service_uuids:
                 _LOGGER.debug("Found RAPT service UUID!")
                 return True
-                
+
         except Exception as e:
             _LOGGER.debug("Error checking device %s: %s", getattr(service_info, 'address', 'unknown'), e)
-        
+
         return False
 
     async def async_step_import(self, import_info: dict[str, Any]) -> FlowResult:
         """Handle import from configuration.yaml."""
-        return await self.async_step_user(import_info)
+        return await self.async_step_bluetooth(import_info)
 
 
 class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
@@ -167,14 +243,21 @@ class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Manage the options."""
+        """Choose what to configure."""
+        menu = ["notifications"]
+        if self.config_entry.data.get(CONF_SOURCE_TYPE) == SOURCE_TYPE_ENTITY:
+            menu.append("entities")
+        return self.async_show_menu(step_id="init", menu_options=menu)
+
+    async def async_step_notifications(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage notification options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        # Get all available notification services
         notification_services = await self._get_notification_services()
-        
-        # Create options schema
+
         options_schema = vol.Schema({
             vol.Optional(
                 CONF_NOTIFICATION_SERVICE,
@@ -183,25 +266,41 @@ class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
         })
 
         return self.async_show_form(
-            step_id="init",
+            step_id="notifications",
             data_schema=options_schema,
             description_placeholders={
                 "notification_services": ", ".join(notification_services) if notification_services else "None found"
             }
         )
 
+    async def async_step_entities(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Reconfigure the source entities."""
+        if user_input is not None:
+            new_data = {**self.config_entry.data, **user_input}
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=new_data
+            )
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            return self.async_create_entry(title="", data={})
+
+        return self.async_show_form(
+            step_id="entities",
+            data_schema=_entity_schema(dict(self.config_entry.data)),
+        )
+
     async def _get_notification_services(self) -> list[str]:
         """Get list of available notification services."""
         try:
-            # Get all notification services from Home Assistant
             services = self.hass.services.async_services()
             notify_services = []
-            
+
             if "notify" in services:
                 for service_name in services["notify"]:
-                    if service_name != "notify":  # Skip the generic notify service
+                    if service_name != "notify":
                         notify_services.append(f"notify.{service_name}")
-            
+
             return sorted(notify_services)
         except Exception:
             return []

@@ -8,7 +8,8 @@ import homeassistant.util.dt as dt_util
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant, Event, EventStateChangedData, callback
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
@@ -23,6 +24,13 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     CONF_RAPT_DEVICE_ID,
     CONF_NOTIFICATION_SERVICE,
+    CONF_SOURCE_TYPE,
+    CONF_GRAVITY_ENTITY,
+    CONF_TEMPERATURE_ENTITY,
+    CONF_BATTERY_ENTITY,
+    CONF_SIGNAL_ENTITY,
+    SOURCE_TYPE_BLUETOOTH,
+    SOURCE_TYPE_ENTITY,
     SESSION_STATE_ACTIVE,
     SESSION_STATE_IDLE,
     ALERT_TYPE_STUCK_FERMENTATION,
@@ -62,57 +70,124 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         self.entry = entry
         self.store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.data = RAPTBrewingData()
+        self._source_type = entry.data.get(CONF_SOURCE_TYPE, SOURCE_TYPE_BLUETOOTH)
         self._rapt_device_id = entry.data.get(CONF_RAPT_DEVICE_ID)
         self._ble_cancel_callback = None
-        
-        # Initialize BLE processor - import at runtime to avoid blocking
+        self._entity_cancel_callback = None
+        self._signal_strength: int | None = None
+        self.ble_device_data = None
+
+        # Current sensor data (BLE or entity-derived)
+        self._current_ble_data: Any = None
+
+        if self._source_type == SOURCE_TYPE_ENTITY:
+            self._setup_entity_source()
+        else:
+            self._setup_bluetooth_source(hass)
+
+    def _setup_bluetooth_source(self, hass: HomeAssistant) -> None:
+        """Wire up direct Bluetooth data ingestion."""
         from homeassistant.components.bluetooth.passive_update_processor import (
             PassiveBluetoothProcessorCoordinator,
         )
-        from .ble_device import RAPTPillBluetoothDeviceData, RAPTPillSensorData
-        
+        from .ble_device import RAPTPillBluetoothDeviceData
+
         _LOGGER.warning("RAPT COORDINATOR: Creating BLE device data for device: %s", self._rapt_device_id)
         self.ble_device_data = RAPTPillBluetoothDeviceData(
             hass, f"RAPT Pill {self._rapt_device_id}"
         )
         self.ble_coordinator = PassiveBluetoothProcessorCoordinator(
-            hass, 
-            _LOGGER, 
-            self._rapt_device_id, 
+            hass,
+            _LOGGER,
+            self._rapt_device_id,
             self.ble_device_data,
-            self.ble_device_data._async_handle_bluetooth_data_update
+            self.ble_device_data._async_handle_bluetooth_data_update,
         )
-        
-        # Start the BLE coordinator to begin receiving data
+
         _LOGGER.warning("RAPT COORDINATOR: Starting BLE coordinator for device: %s", self._rapt_device_id)
-        
-        # Register with Home Assistant's Bluetooth system (needed for ESPHome BLE proxies)
+
         from homeassistant.components.bluetooth import async_register_callback
-        
+
         def ble_callback(service_info: BluetoothServiceInfoBleak, change: str) -> None:
-            """Handle Bluetooth updates from ESPHome proxies."""
-            _LOGGER.warning("ESPHome BLE CALLBACK: Device %s, Change: %s, Manufacturers: %s", 
+            _LOGGER.warning("ESPHome BLE CALLBACK: Device %s, Change: %s, Manufacturers: %s",
                            service_info.address, change, list(service_info.manufacturer_data.keys()))
             if service_info.address == self._rapt_device_id:
                 self.ble_device_data._async_handle_bluetooth_data_update(service_info)
-        
-        # Register callback for our specific device
+
         self._ble_cancel_callback = async_register_callback(
             hass,
             ble_callback,
             {"address": self._rapt_device_id},
-            "advertisement"
+            "advertisement",
         )
         _LOGGER.warning("RAPT COORDINATOR: Registered ESPHome BLE callback for device: %s", self._rapt_device_id)
-        
-        # Current sensor data from BLE
-        self._current_ble_data: Any = None
+
+    def _setup_entity_source(self) -> None:
+        """Wire up HA entity-based data ingestion."""
+        tracked = [
+            eid for eid in (
+                self.entry.data.get(CONF_GRAVITY_ENTITY),
+                self.entry.data.get(CONF_TEMPERATURE_ENTITY),
+                self.entry.data.get(CONF_BATTERY_ENTITY),
+                self.entry.data.get(CONF_SIGNAL_ENTITY),
+            )
+            if eid
+        ]
+        _LOGGER.warning("RAPT COORDINATOR: Entity source tracking: %s", tracked)
+
+        @callback
+        def _handle_entity_change(event: Event[EventStateChangedData]) -> None:
+            self._refresh_from_entities()
+            self.hass.async_create_task(self.async_request_refresh())
+
+        self._entity_cancel_callback = async_track_state_change_event(
+            self.hass, tracked, _handle_entity_change
+        )
+
+    def _refresh_from_entities(self) -> None:
+        """Build sensor data from the configured HA entities."""
+        from .ble_device import RAPTPillSensorData
+
+        gravity = self._safe_float(
+            self._get_entity_state(self.entry.data.get(CONF_GRAVITY_ENTITY))
+        )
+        temperature = self._safe_float(
+            self._get_entity_state(self.entry.data.get(CONF_TEMPERATURE_ENTITY))
+        )
+        battery = self._safe_int(
+            self._get_entity_state(self.entry.data.get(CONF_BATTERY_ENTITY))
+        )
+        signal = self._safe_int(
+            self._get_entity_state(self.entry.data.get(CONF_SIGNAL_ENTITY))
+        )
+
+        if gravity is None and temperature is None and battery is None:
+            self._current_ble_data = None
+            self._signal_strength = signal
+            return
+
+        self._current_ble_data = RAPTPillSensorData(
+            temperature=temperature,
+            gravity=gravity,
+            battery=battery,
+            signal_strength=signal,
+        )
+        self._signal_strength = signal
+
+    def _get_entity_state(self, entity_id: str | None) -> Any:
+        """Read the current state value of an entity."""
+        if not entity_id:
+            return None
+        state = self.hass.states.get(entity_id)
+        return state.state if state else None
         
     async def _async_update_data(self) -> RAPTBrewingData:
         """Update data from integrated BLE device."""
         try:
-            # Get current BLE sensor data
-            self._current_ble_data = self.ble_device_data.get_last_sensor_data()
+            if self._source_type == SOURCE_TYPE_ENTITY:
+                self._refresh_from_entities()
+            else:
+                self._current_ble_data = self.ble_device_data.get_last_sensor_data()
             
             _LOGGER.debug("RAPT COORDINATOR: Update - BLE data: %s", 
                            self._current_ble_data.to_dict() if self._current_ble_data else "None")
@@ -142,6 +217,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
     
     def get_ble_signal_strength(self) -> int | None:
         """Get BLE signal strength."""
+        if self._source_type == SOURCE_TYPE_ENTITY:
+            return self._signal_strength
         service_info = self.ble_device_data.get_last_service_info()
         return service_info.rssi if service_info else None
     
@@ -576,6 +653,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         if self._ble_cancel_callback:
             self._ble_cancel_callback()
             self._ble_cancel_callback = None
+        if self._entity_cancel_callback:
+            self._entity_cancel_callback()
+            self._entity_cancel_callback = None
         await super().async_shutdown()
     
     @staticmethod

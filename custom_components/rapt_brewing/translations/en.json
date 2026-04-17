@@ -3,9 +3,26 @@
     "step": {
       "user": {
         "title": "RAPT Brewing Session Manager",
-        "description": "Configure your RAPT Brewing session manager with integrated Bluetooth support. Found {devices_count} RAPT device(s).",
+        "description": "Choose how this integration should receive RAPT Pill data.",
+        "data": {
+          "source_type": "Data source"
+        }
+      },
+      "bluetooth": {
+        "title": "RAPT Pill - Direct Bluetooth",
+        "description": "Select a RAPT Pill discovered via Bluetooth, or enter a device ID manually. Found {devices_count} RAPT device(s).",
         "data": {
           "rapt_device_id": "RAPT Device"
+        }
+      },
+      "entity": {
+        "title": "RAPT Pill - Home Assistant entities",
+        "description": "Pick the existing sensor entities that expose your RAPT Pill data (e.g. from a Shelly BLE proxy).",
+        "data": {
+          "gravity_entity": "Specific gravity sensor",
+          "temperature_entity": "Temperature sensor",
+          "battery_entity": "Battery sensor",
+          "signal_entity": "Signal strength sensor (optional)"
         }
       }
     },
@@ -21,12 +38,27 @@
     "step": {
       "init": {
         "title": "RAPT Brewing Options",
-        "description": "Configure your RAPT Brewing settings",
+        "description": "What would you like to configure?",
+        "menu_options": {
+          "notifications": "Notifications",
+          "entities": "Source entities"
+        }
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Configure where brewing alerts are sent. Available services: {notification_services}",
         "data": {
-          "target_gravity": "Target Final Gravity",
-          "target_temperature": "Target Temperature (°C)",
-          "fermentation_alerts": "Enable Fermentation Alerts",
-          "temperature_alerts": "Enable Temperature Alerts"
+          "notification_service": "Notification service"
+        }
+      },
+      "entities": {
+        "title": "Source entities",
+        "description": "Update the Home Assistant sensor entities used as the RAPT Pill data source.",
+        "data": {
+          "gravity_entity": "Specific gravity sensor",
+          "temperature_entity": "Temperature sensor",
+          "battery_entity": "Battery sensor",
+          "signal_entity": "Signal strength sensor (optional)"
         }
       }
     }

@@ -56,6 +56,15 @@ CONF_FERMENTATION_ALERTS: Final = "fermentation_alerts"
 CONF_TEMPERATURE_ALERTS: Final = "temperature_alerts"
 CONF_ALERT_THRESHOLDS: Final = "alert_thresholds"
 CONF_NOTIFICATION_SERVICE: Final = "notification_service"
+CONF_SOURCE_TYPE: Final = "source_type"
+CONF_GRAVITY_ENTITY: Final = "gravity_entity"
+CONF_TEMPERATURE_ENTITY: Final = "temperature_entity"
+CONF_BATTERY_ENTITY: Final = "battery_entity"
+CONF_SIGNAL_ENTITY: Final = "signal_entity"
+
+# Data source types
+SOURCE_TYPE_BLUETOOTH: Final = "bluetooth"
+SOURCE_TYPE_ENTITY: Final = "entity"
 
 # Default alert thresholds
 DEFAULT_STUCK_FERMENTATION_HOURS: Final = 48

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-04-17
+
+### 🔌 **Choose Your Data Source: Direct Bluetooth or HA Entities**
+- **New entity-based source**: Integration can now read RAPT Pill data from existing Home Assistant sensor entities (e.g. those created by a Shelly BLE proxy forwarding data over Wi-Fi)
+- **Works when the Pill is out of Bluetooth range** of your HA server, as long as another device exposes `specific_gravity`, `temperature`, `battery` (and optionally `signal_strength`) as entities
+- **Two-step config flow**: pick "Direct Bluetooth" or "Home Assistant entities" when adding the integration
+- **Reconfigure via options**: the options flow now has a menu — Notifications (as before) plus Source entities (for entity-sourced integrations), so you can update entity choices without deleting and re-adding
+- **Fully backward compatible**: existing setups default to direct Bluetooth with no migration required
+
 ## [2.5.8] - 2025-08-02
 
 ### 🔔 **Smart Temperature Alerts - No More Cold Crash Spam**
