@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2] - 2026-04-17
+
+### 🔧 **Entity-Source Picker Accepts Helpers**
+- **Broader entity picker**: the gravity, temperature, battery and signal selectors in the entity-source config flow now accept `sensor`, `number` and `input_number` entities, and no longer filter by `device_class`
+- **Why**: lets you use Input Number helpers or template sensors for testing without a real BLE proxy, and works with proxy sensors that don't set a device class
+
 ## [2.6.1] - 2026-04-17
 
 ### 🛠️ **Multiple Entries Now Show Proper Devices and Entities**

@@ -44,8 +44,15 @@ SOURCE_TYPE_SCHEMA = vol.Schema(
 )
 
 
+_NUMERIC_DOMAINS = ["sensor", "input_number", "number"]
+
+
 def _entity_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
-    """Schema for choosing HA entities as the data source."""
+    """Schema for choosing HA entities as the data source.
+
+    Accepts sensor, number, and input_number so that template sensors and
+    helpers can be used alongside real proxy-provided sensors.
+    """
     defaults = defaults or {}
     return vol.Schema(
         {
@@ -53,29 +60,25 @@ def _entity_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_GRAVITY_ENTITY,
                 default=defaults.get(CONF_GRAVITY_ENTITY),
             ): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor")
+                selector.EntitySelectorConfig(domain=_NUMERIC_DOMAINS)
             ),
             vol.Required(
                 CONF_TEMPERATURE_ENTITY,
                 default=defaults.get(CONF_TEMPERATURE_ENTITY),
             ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain="sensor", device_class="temperature"
-                )
+                selector.EntitySelectorConfig(domain=_NUMERIC_DOMAINS)
             ),
             vol.Required(
                 CONF_BATTERY_ENTITY,
                 default=defaults.get(CONF_BATTERY_ENTITY),
             ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain="sensor", device_class="battery"
-                )
+                selector.EntitySelectorConfig(domain=_NUMERIC_DOMAINS)
             ),
             vol.Optional(
                 CONF_SIGNAL_ENTITY,
                 default=defaults.get(CONF_SIGNAL_ENTITY, vol.UNDEFINED),
             ): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor")
+                selector.EntitySelectorConfig(domain=_NUMERIC_DOMAINS)
             ),
         }
     )
