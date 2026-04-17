@@ -84,7 +84,7 @@ def _entity_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
 class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for RAPT Brewing."""
 
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     def async_get_options_flow(config_entry):

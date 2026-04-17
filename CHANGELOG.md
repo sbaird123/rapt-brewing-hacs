@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2026-04-17
+
+### 🛠️ **Multiple Entries Now Show Proper Devices and Entities**
+- **Scoped identifiers**: device identifiers and entity unique IDs are now scoped to the config entry, so adding a second/third entry (e.g. one Bluetooth pill plus one Shelly-proxied pill) correctly creates its own device with all 35 entities instead of colliding with the first entry
+- **Device name follows entry title**: each integration entry appears as a distinct device labelled with the title shown in the integration list
+- **History preserved**: added a v1 → v2 migration that rewrites legacy entity unique IDs and the legacy device identifier for existing single-entry setups, so your existing RAPT Pill keeps all its history
+
 ## [2.6.0] - 2026-04-17
 
 ### 🔌 **Choose Your Data Source: Direct Bluetooth or HA Entities**

@@ -9,7 +9,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
 from .entity import RAPTBrewingEntity
 
 if TYPE_CHECKING:
@@ -35,10 +34,10 @@ async def async_setup_entry(
     coordinator: RAPTBrewingCoordinator = entry.runtime_data
     
     entities = [
-        RAPTBrewingText(coordinator, description)
+        RAPTBrewingText(coordinator, entry, description)
         for description in TEXT_TYPES
     ]
-    
+
     async_add_entities(entities)
 
 
@@ -48,12 +47,12 @@ class RAPTBrewingText(RAPTBrewingEntity, TextEntity):
     def __init__(
         self,
         coordinator: RAPTBrewingCoordinator,
+        entry: ConfigEntry,
         description: TextEntityDescription,
     ) -> None:
         """Initialize the text entity."""
-        super().__init__(coordinator, description.key)
+        super().__init__(coordinator, entry, description.key)
         self.entity_description = description
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
         self._attr_mode = "text"
         self._attr_native_max = 100
 

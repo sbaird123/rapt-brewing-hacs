@@ -9,7 +9,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
 from .entity import RAPTBrewingEntity
 
 if TYPE_CHECKING:
@@ -45,10 +44,10 @@ async def async_setup_entry(
     coordinator: RAPTBrewingCoordinator = entry.runtime_data
     
     entities = [
-        RAPTBrewingButton(coordinator, description)
+        RAPTBrewingButton(coordinator, entry, description)
         for description in BUTTON_TYPES
     ]
-    
+
     async_add_entities(entities)
 
 
@@ -58,12 +57,12 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
     def __init__(
         self,
         coordinator: RAPTBrewingCoordinator,
+        entry: ConfigEntry,
         description: ButtonEntityDescription,
     ) -> None:
         """Initialize the button."""
-        super().__init__(coordinator, description.key)
+        super().__init__(coordinator, entry, description.key)
         self.entity_description = description
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
 
     async def async_press(self) -> None:
         """Handle button press."""

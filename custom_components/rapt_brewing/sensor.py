@@ -18,7 +18,6 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
 from .entity import RAPTBrewingEntity
 
 if TYPE_CHECKING:
@@ -194,10 +193,10 @@ async def async_setup_entry(
     coordinator: RAPTBrewingCoordinator = entry.runtime_data
     
     entities = [
-        RAPTBrewingSensor(coordinator, description)
+        RAPTBrewingSensor(coordinator, entry, description)
         for description in SENSOR_TYPES
     ]
-    
+
     async_add_entities(entities)
 
 
@@ -207,12 +206,12 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
     def __init__(
         self,
         coordinator: RAPTBrewingCoordinator,
+        entry: ConfigEntry,
         description: SensorEntityDescription,
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(coordinator, description.key)
+        super().__init__(coordinator, entry, description.key)
         self.entity_description = description
-        self._attr_unique_id = f"{DOMAIN}_{description.key}"
 
     @property
     def native_value(self) -> Any:
