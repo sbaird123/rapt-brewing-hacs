@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3] - 2026-05-07
+
+### 🐛 **Fixes Options Flow Crash on Existing Entries**
+- **Options flow no longer crashes**: removed the deprecated `__init__(config_entry)` on `OptionsFlow` that broke on Home Assistant 2024.12+ with `AttributeError: property 'config_entry' of 'RAPTBrewingOptionsFlow' object has no setter`
+- **Configure now opens for existing entries** (no need to re-add the integration to access notification or entity-source options)
+
+### 🛡️ **Sanity Filter on Sensor Readings**
+- **Out-of-range readings rejected**: gravity outside 0.950–1.200 SG, temperature outside −10 to 60 °C, and battery outside 0–100 % are now logged and dropped before they reach the session
+- **Why**: a single bad reading could poison `current_gravity` (or `original_gravity` on session start), pushing alcohol % to the 20 % cap until manually corrected
+- **Applies to both data sources**: filter runs on direct Bluetooth readings and on entity-sourced readings (Shelly BLE proxy etc.)
+
 ## [2.6.2] - 2026-04-17
 
 ### 🔧 **Entity-Source Picker Accepts Helpers**

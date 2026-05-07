@@ -44,6 +44,12 @@ from .const import (
     DEFAULT_LOW_BATTERY_THRESHOLD,
     FERMENTATION_RATE_STUCK,
     FERMENTATION_RATE_SLOW,
+    GRAVITY_MIN,
+    GRAVITY_MAX,
+    TEMPERATURE_MIN,
+    TEMPERATURE_MAX,
+    BATTERY_MIN,
+    BATTERY_MAX,
 )
 from .data import RAPTBrewingData, BrewingSession, DataPoint, Alert
 
@@ -148,15 +154,15 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         """Build sensor data from the configured HA entities."""
         from .ble_device import RAPTPillSensorData
 
-        gravity = self._safe_float(
+        gravity = self._validate_gravity(self._safe_float(
             self._get_entity_state(self.entry.data.get(CONF_GRAVITY_ENTITY))
-        )
-        temperature = self._safe_float(
+        ))
+        temperature = self._validate_temperature(self._safe_float(
             self._get_entity_state(self.entry.data.get(CONF_TEMPERATURE_ENTITY))
-        )
-        battery = self._safe_int(
+        ))
+        battery = self._validate_battery(self._safe_int(
             self._get_entity_state(self.entry.data.get(CONF_BATTERY_ENTITY))
-        )
+        ))
         signal = self._safe_int(
             self._get_entity_state(self.entry.data.get(CONF_SIGNAL_ENTITY))
         )
@@ -180,6 +186,36 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             return None
         state = self.hass.states.get(entity_id)
         return state.state if state else None
+
+    def _validate_gravity(self, value: float | None) -> float | None:
+        """Reject implausible gravity readings before they reach session state."""
+        if value is None:
+            return None
+        if GRAVITY_MIN <= value <= GRAVITY_MAX:
+            return value
+        _LOGGER.warning("RAPT FILTER: Rejecting out-of-range gravity %.4f (allowed %.3f–%.3f)",
+                       value, GRAVITY_MIN, GRAVITY_MAX)
+        return None
+
+    def _validate_temperature(self, value: float | None) -> float | None:
+        """Reject implausible temperature readings."""
+        if value is None:
+            return None
+        if TEMPERATURE_MIN <= value <= TEMPERATURE_MAX:
+            return value
+        _LOGGER.warning("RAPT FILTER: Rejecting out-of-range temperature %.2f°C (allowed %.1f–%.1f)",
+                       value, TEMPERATURE_MIN, TEMPERATURE_MAX)
+        return None
+
+    def _validate_battery(self, value: int | None) -> int | None:
+        """Reject implausible battery readings."""
+        if value is None:
+            return None
+        if BATTERY_MIN <= value <= BATTERY_MAX:
+            return value
+        _LOGGER.warning("RAPT FILTER: Rejecting out-of-range battery %d%% (allowed %d–%d)",
+                       value, BATTERY_MIN, BATTERY_MAX)
+        return None
         
     async def _async_update_data(self) -> RAPTBrewingData:
         """Update data from integrated BLE device."""
@@ -226,45 +262,48 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         """Update current session with new BLE data."""
         if not self.data.current_session:
             return
-            
+
+        gravity = self._validate_gravity(ble_data.gravity)
+        temperature = self._validate_temperature(ble_data.temperature)
+        battery = self._validate_battery(ble_data.battery)
+
         session = self.data.current_session
         now = dt_util.now()
-        
+
         # Get signal strength from BLE service info
         signal_strength = self.get_ble_signal_strength()
-        
-        # Add data point
+
+        # Add data point (only fields that passed validation; bad readings stored as None)
         data_point = DataPoint(
             timestamp=now,
-            gravity=ble_data.gravity,
-            temperature=ble_data.temperature,
-            battery_level=ble_data.battery,
+            gravity=gravity,
+            temperature=temperature,
+            battery_level=battery,
             signal_strength=signal_strength,
         )
         session.data_points.append(data_point)
-        
+
         # Update current values
-        if ble_data.gravity is not None:
-            session.current_gravity = ble_data.gravity
-            
+        if gravity is not None:
+            session.current_gravity = gravity
+
             # Auto-set original gravity if not set and this is the first gravity reading
             # Use temperature-corrected gravity for more accurate OG measurement
             if session.original_gravity is None and len(session.data_points) <= 1:
-                # Apply temperature correction to the raw gravity reading
-                corrected_og = self._apply_temp_correction_to_gravity(ble_data.gravity, ble_data.temperature)
-                session.original_gravity = corrected_og if corrected_og else ble_data.gravity
-                _LOGGER.warning("RAPT AUTO-SET: Original gravity set to %.3f (temp corrected from %.3f) for session: %s", 
-                               session.original_gravity, ble_data.gravity, session.name)
-                
+                corrected_og = self._apply_temp_correction_to_gravity(gravity, temperature)
+                session.original_gravity = corrected_og if corrected_og else gravity
+                _LOGGER.warning("RAPT AUTO-SET: Original gravity set to %.3f (temp corrected from %.3f) for session: %s",
+                               session.original_gravity, gravity, session.name)
+
                 # Also set a reasonable default target gravity if not set
                 # Typical beer fermentation: OG - 0.020 to 0.030 points
                 if session.target_gravity is None:
-                    session.target_gravity = max(0.990, ble_data.gravity - 0.025)
-                    _LOGGER.warning("RAPT AUTO-SET: Target gravity set to %.3f for session: %s", 
+                    session.target_gravity = max(0.990, gravity - 0.025)
+                    _LOGGER.warning("RAPT AUTO-SET: Target gravity set to %.3f for session: %s",
                                    session.target_gravity, session.name)
-                
-        if ble_data.temperature is not None:
-            session.current_temperature = ble_data.temperature
+
+        if temperature is not None:
+            session.current_temperature = temperature
             
         # Calculate derived values
         self._calculate_derived_values(session)
