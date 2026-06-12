@@ -18,8 +18,12 @@ cards:
             name: Edit Session Name
           - entity: button.rapt_brewing_session_manager_start_new_session
             name: Start New Session
+          - entity: button.rapt_brewing_session_manager_stop_current_session
+            name: Stop Session
           - entity: button.rapt_brewing_session_manager_delete_current_session
             name: Delete Session
+          - entity: select.rapt_brewing_session_manager_session
+            name: View Session
         show_header_toggle: false
       - type: entities
         title: Gravity Readings
@@ -62,6 +66,8 @@ cards:
       - type: entities
         title: Device Status
         entities:
+          - entity: binary_sensor.rapt_brewing_session_manager_device_online
+            name: Device Online
           - entity: sensor.rapt_brewing_session_manager_rapt_pill_battery
             name: Battery Level
           - entity: sensor.rapt_brewing_session_manager_rapt_pill_signal
