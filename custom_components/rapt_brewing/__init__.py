@@ -15,7 +15,14 @@ if TYPE_CHECKING:
     from .coordinator import RAPTBrewingCoordinator
     from .data import RAPTBrewingData
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON, Platform.TEXT, Platform.NUMBER]
+PLATFORMS: list[Platform] = [
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.TEXT,
+]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +49,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) 
 
     # Forward setup to all platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register domain services (idempotent across multiple entries)
+    from .services import async_register_services
+    async_register_services(hass)
+
+    # Reload the entry when options change so new thresholds/units apply
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the config entry when options are updated."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) -> bool:

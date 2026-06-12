@@ -19,12 +19,41 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import GRAVITY_UNIT_PLATO
 from .entity import RAPTBrewingEntity
+from .util import sg_to_plato
 
 if TYPE_CHECKING:
     from .coordinator import RAPTBrewingCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# Sensors that report live device readings; these go unavailable when the
+# device is offline. Session metadata sensors stay available.
+LIVE_READING_KEYS = {
+    "current_gravity",
+    "current_gravity_temp_corrected",
+    "current_temperature",
+    "battery_level",
+    "signal_strength",
+    "gravity_velocity",
+    "accelerometer_x",
+    "accelerometer_y",
+    "accelerometer_z",
+    "device_stability",
+    "fermentation_activity",
+    "firmware_version",
+    "device_type",
+    "data_format_version",
+}
+
+# Gravity sensors that honour the configured display unit (SG or °P)
+GRAVITY_SENSOR_KEYS = {
+    "original_gravity",
+    "current_gravity",
+    "current_gravity_temp_corrected",
+    "target_gravity",
+}
 
 SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
@@ -217,6 +246,26 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
+        """Return the state of the sensor, converting gravity units if configured."""
+        value = self._raw_native_value()
+        if (
+            value is not None
+            and self.entity_description.key in GRAVITY_SENSOR_KEYS
+            and self.coordinator.gravity_unit == GRAVITY_UNIT_PLATO
+        ):
+            return round(sg_to_plato(value), 2)
+        return value
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit, honouring the configured gravity display unit."""
+        if self.entity_description.key in GRAVITY_SENSOR_KEYS:
+            if self.coordinator.gravity_unit == GRAVITY_UNIT_PLATO:
+                return "°P"
+            return None  # SG is dimensionless
+        return super().native_unit_of_measurement
+
+    def _raw_native_value(self) -> Any:
         """Return the state of the sensor."""
         if self.entity_description.key == "session_name":
             return (
@@ -580,5 +629,11 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        # All session sensors require an active session
-        return self.coordinator.data.current_session is not None
+        # All session sensors require a session to display
+        if self.coordinator.data.current_session is None:
+            return False
+        # Live device readings go unavailable when the device is offline,
+        # so a dead battery doesn't masquerade as a stable fermentation
+        if self.entity_description.key in LIVE_READING_KEYS:
+            return self.coordinator.is_online
+        return True

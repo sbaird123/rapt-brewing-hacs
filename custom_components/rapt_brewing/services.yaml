@@ -1,0 +1,85 @@
+start_session:
+  name: Start Brewing Session
+  description: Start a new brewing session (stops any session currently running on the same entry)
+  fields:
+    session_name:
+      name: Session Name
+      description: Name for the brewing session
+      required: true
+      selector:
+        text:
+    recipe:
+      name: Recipe
+      description: Recipe name or description
+      required: false
+      selector:
+        text:
+    original_gravity:
+      name: Original Gravity
+      description: Original gravity reading (SG). Leave empty to auto-set from the first reading.
+      required: false
+      selector:
+        number:
+          min: 1.000
+          max: 1.200
+          step: 0.001
+          mode: box
+    target_gravity:
+      name: Target Final Gravity
+      description: Target final gravity (SG). Leave empty to auto-set from the original gravity.
+      required: false
+      selector:
+        number:
+          min: 0.990
+          max: 1.200
+          step: 0.001
+          mode: box
+    target_temperature:
+      name: Target Temperature
+      description: Target fermentation temperature (°C)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 0.1
+          unit_of_measurement: "°C"
+          mode: box
+    device_id:
+      name: Device
+      description: Which RAPT Brewing device to target (only needed with multiple entries)
+      required: false
+      selector:
+        device:
+          integration: rapt_brewing
+
+stop_session:
+  name: Stop Brewing Session
+  description: Stop the current brewing session
+  fields:
+    device_id:
+      name: Device
+      description: Which RAPT Brewing device to target (only needed with multiple entries)
+      required: false
+      selector:
+        device:
+          integration: rapt_brewing
+
+add_session_note:
+  name: Add Session Note
+  description: Add a timestamped note to the current brewing session
+  fields:
+    note:
+      name: Note
+      description: Note to add to the session
+      required: true
+      selector:
+        text:
+          multiline: true
+    device_id:
+      name: Device
+      description: Which RAPT Brewing device to target (only needed with multiple entries)
+      required: false
+      selector:
+        device:
+          integration: rapt_brewing

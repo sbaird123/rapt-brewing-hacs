@@ -2,13 +2,46 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from .const import (
     FERMENTATION_STAGE_PRIMARY,
     SESSION_STATE_IDLE,
 )
+
+# Downsampling: keep full resolution for recent data, thin older data so a
+# multi-week fermentation fits comfortably within the data point cap.
+DOWNSAMPLE_FULL_RES_WINDOW = timedelta(hours=24)
+DOWNSAMPLE_BUCKET_SECONDS = 900  # one point per 15 minutes for older data
+
+
+def downsample_data_points(
+    points: list[DataPoint],
+    now: datetime,
+    full_res_window: timedelta = DOWNSAMPLE_FULL_RES_WINDOW,
+    bucket_seconds: int = DOWNSAMPLE_BUCKET_SECONDS,
+) -> list[DataPoint]:
+    """Thin data points older than the full-resolution window.
+
+    Points newer than `full_res_window` are kept as-is; older points are
+    reduced to the first point in each `bucket_seconds` bucket.
+    """
+    cutoff = now - full_res_window
+    thinned: list[DataPoint] = []
+    seen_buckets: set[int] = set()
+    recent: list[DataPoint] = []
+
+    for dp in points:
+        if dp.timestamp >= cutoff:
+            recent.append(dp)
+            continue
+        bucket = int(dp.timestamp.timestamp() // bucket_seconds)
+        if bucket not in seen_buckets:
+            seen_buckets.add(bucket)
+            thinned.append(dp)
+
+    return thinned + recent
 
 
 @dataclass

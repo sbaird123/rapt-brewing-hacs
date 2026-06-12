@@ -35,14 +35,58 @@
           "battery_entity": "Battery sensor",
           "signal_entity": "Signal strength sensor (optional)"
         }
+      },
+      "cloud": {
+        "title": "RAPT Cloud",
+        "description": "Sign in with your RAPT portal account. Create an API secret under Account → API Secrets at app.rapt.io.",
+        "data": {
+          "api_email": "RAPT account email",
+          "api_secret": "API secret"
+        }
+      },
+      "cloud_device": {
+        "title": "RAPT Cloud - Select Hydrometer",
+        "description": "Found {devices_count} hydrometer(s) on your RAPT account.",
+        "data": {
+          "hydrometer_id": "Hydrometer"
+        }
+      },
+      "reconfigure_bluetooth": {
+        "title": "Reconfigure RAPT Pill",
+        "description": "Update the Bluetooth address of this RAPT Pill.",
+        "data": {
+          "rapt_device_id": "Bluetooth address"
+        }
+      },
+      "reconfigure_entity": {
+        "title": "Reconfigure Source Entities",
+        "description": "Update the Home Assistant entities used as the RAPT Pill data source.",
+        "data": {
+          "gravity_entity": "Specific gravity sensor",
+          "temperature_entity": "Temperature sensor",
+          "battery_entity": "Battery sensor",
+          "signal_entity": "Signal strength sensor (optional)"
+        }
+      },
+      "reconfigure_cloud": {
+        "title": "Reconfigure RAPT Cloud",
+        "description": "Update your RAPT portal credentials.",
+        "data": {
+          "api_email": "RAPT account email",
+          "api_secret": "API secret"
+        }
       }
     },
     "error": {
       "invalid_device": "Invalid RAPT device ID",
+      "invalid_auth": "Authentication failed; check your email and API secret",
+      "cannot_connect": "Could not connect to the RAPT cloud",
+      "no_hydrometers": "No hydrometers found on this RAPT account",
       "no_devices_found": "No RAPT devices found via Bluetooth. Ensure your RAPT Pill is powered on and nearby, then try again."
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "reconfigure_successful": "Reconfiguration successful"
     }
   },
   "options": {
@@ -52,6 +96,8 @@
         "description": "What would you like to configure?",
         "menu_options": {
           "notifications": "Notifications",
+          "alerts": "Alert thresholds",
+          "display": "Display & calibration",
           "entities": "Source entities"
         }
       },
@@ -60,6 +106,26 @@
         "description": "Configure where brewing alerts are sent. Available services: {notification_services}",
         "data": {
           "notification_service": "Notification service"
+        }
+      },
+      "alerts": {
+        "title": "Alert thresholds",
+        "description": "Tune when brewing alerts fire and when the device counts as offline.",
+        "data": {
+          "stuck_fermentation_hours": "Stuck fermentation after (hours)",
+          "temperature_high_threshold": "High temperature alert above",
+          "temperature_low_threshold": "Low temperature alert below",
+          "low_battery_threshold": "Low battery alert below",
+          "offline_timeout_minutes": "Device offline after (minutes)"
+        }
+      },
+      "display": {
+        "title": "Display & calibration",
+        "description": "Choose the gravity display unit and apply calibration offsets to raw readings. Note: the Target/Original Gravity input boxes always use SG.",
+        "data": {
+          "gravity_unit": "Gravity display unit",
+          "gravity_offset": "Gravity calibration offset",
+          "temperature_offset": "Temperature calibration offset"
         }
       },
       "entities": {

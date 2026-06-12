@@ -8,6 +8,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import selector
 
@@ -20,8 +21,28 @@ from .const import (
     CONF_TEMPERATURE_ENTITY,
     CONF_BATTERY_ENTITY,
     CONF_SIGNAL_ENTITY,
+    CONF_API_EMAIL,
+    CONF_API_SECRET,
+    CONF_HYDROMETER_ID,
+    CONF_STUCK_FERMENTATION_HOURS,
+    CONF_TEMPERATURE_HIGH_THRESHOLD,
+    CONF_TEMPERATURE_LOW_THRESHOLD,
+    CONF_LOW_BATTERY_THRESHOLD,
+    CONF_OFFLINE_TIMEOUT_MINUTES,
+    CONF_GRAVITY_OFFSET,
+    CONF_TEMPERATURE_OFFSET,
+    CONF_GRAVITY_UNIT,
+    GRAVITY_UNIT_SG,
+    GRAVITY_UNIT_PLATO,
     SOURCE_TYPE_BLUETOOTH,
     SOURCE_TYPE_ENTITY,
+    SOURCE_TYPE_CLOUD,
+    DEFAULT_STUCK_FERMENTATION_HOURS,
+    DEFAULT_TEMPERATURE_HIGH_THRESHOLD,
+    DEFAULT_TEMPERATURE_LOW_THRESHOLD,
+    DEFAULT_LOW_BATTERY_THRESHOLD,
+    DEFAULT_OFFLINE_TIMEOUT_MINUTES,
+    DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD,
 )
 
 # BLE constants for discovery
@@ -38,6 +59,7 @@ SOURCE_TYPE_SCHEMA = vol.Schema(
             {
                 SOURCE_TYPE_BLUETOOTH: "Direct Bluetooth",
                 SOURCE_TYPE_ENTITY: "Home Assistant entities (e.g. Shelly BLE proxy)",
+                SOURCE_TYPE_CLOUD: "RAPT cloud (api.rapt.io)",
             }
         )
     }
@@ -84,6 +106,51 @@ def _entity_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
+def _cloud_credentials_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    """Schema for RAPT cloud credentials."""
+    defaults = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_API_EMAIL, default=defaults.get(CONF_API_EMAIL, vol.UNDEFINED)
+            ): cv.string,
+            vol.Required(
+                CONF_API_SECRET, default=defaults.get(CONF_API_SECRET, vol.UNDEFINED)
+            ): cv.string,
+        }
+    )
+
+
+async def _async_validate_cloud_credentials(
+    hass, email: str, api_secret: str
+) -> tuple[dict[str, str] | None, list[dict[str, Any]]]:
+    """Validate cloud credentials. Returns (error, hydrometers)."""
+    from .api import RAPTCloudAuthError, RAPTCloudClient, RAPTCloudError
+
+    client = RAPTCloudClient(
+        aiohttp_client.async_get_clientsession(hass), email, api_secret
+    )
+    try:
+        hydrometers = await client.async_get_hydrometers()
+    except RAPTCloudAuthError:
+        return {"base": "invalid_auth"}, []
+    except RAPTCloudError as err:
+        _LOGGER.warning("RAPT cloud validation failed: %s", err)
+        return {"base": "cannot_connect"}, []
+    return None, hydrometers
+
+
+def _hydrometer_id(hydrometer: dict[str, Any]) -> str | None:
+    """Extract the ID from a hydrometer record."""
+    raw = hydrometer.get("id", hydrometer.get("Id"))
+    return str(raw) if raw is not None else None
+
+
+def _hydrometer_name(hydrometer: dict[str, Any]) -> str:
+    """Extract a display name from a hydrometer record."""
+    return str(hydrometer.get("name", hydrometer.get("Name")) or "RAPT Pill")
+
+
 class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for RAPT Brewing."""
 
@@ -98,6 +165,8 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._discovered_devices: dict[str, Any] = {}
         self._discovery_info: Any = None
+        self._cloud_credentials: dict[str, str] = {}
+        self._cloud_hydrometers: list[dict[str, Any]] = []
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -106,12 +175,18 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if user_input[CONF_SOURCE_TYPE] == SOURCE_TYPE_ENTITY:
                 return await self.async_step_entity()
+            if user_input[CONF_SOURCE_TYPE] == SOURCE_TYPE_CLOUD:
+                return await self.async_step_cloud()
             return await self.async_step_bluetooth_select()
 
         return self.async_show_form(
             step_id="user",
             data_schema=SOURCE_TYPE_SCHEMA,
         )
+
+    # ------------------------------------------------------------------
+    # Bluetooth source
+    # ------------------------------------------------------------------
 
     async def async_step_bluetooth(self, discovery_info: Any) -> FlowResult:
         """Handle a RAPT Pill discovered via Bluetooth (manifest matchers)."""
@@ -206,6 +281,10 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
+    # ------------------------------------------------------------------
+    # Entity source
+    # ------------------------------------------------------------------
+
     async def async_step_entity(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -224,6 +303,185 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="entity",
             data_schema=_entity_schema(),
         )
+
+    # ------------------------------------------------------------------
+    # Cloud source
+    # ------------------------------------------------------------------
+
+    async def async_step_cloud(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a RAPT cloud data source: credentials."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            email = user_input[CONF_API_EMAIL].strip()
+            api_secret = user_input[CONF_API_SECRET].strip()
+            error, hydrometers = await _async_validate_cloud_credentials(
+                self.hass, email, api_secret
+            )
+            if error:
+                errors = error
+            elif not hydrometers:
+                errors["base"] = "no_hydrometers"
+            else:
+                self._cloud_credentials = {
+                    CONF_API_EMAIL: email,
+                    CONF_API_SECRET: api_secret,
+                }
+                self._cloud_hydrometers = hydrometers
+                return await self.async_step_cloud_device()
+
+        return self.async_show_form(
+            step_id="cloud",
+            data_schema=_cloud_credentials_schema(),
+            errors=errors,
+        )
+
+    async def async_step_cloud_device(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a RAPT cloud data source: pick the hydrometer."""
+        options = {
+            hid: _hydrometer_name(h)
+            for h in self._cloud_hydrometers
+            if (hid := _hydrometer_id(h)) is not None
+        }
+
+        if user_input is not None:
+            hydrometer_id = user_input[CONF_HYDROMETER_ID]
+            await self.async_set_unique_id(f"cloud:{hydrometer_id}")
+            self._abort_if_unique_id_configured()
+
+            return self.async_create_entry(
+                title=f"RAPT Pill ({options.get(hydrometer_id, hydrometer_id)})",
+                data={
+                    CONF_SOURCE_TYPE: SOURCE_TYPE_CLOUD,
+                    CONF_HYDROMETER_ID: hydrometer_id,
+                    **self._cloud_credentials,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="cloud_device",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_HYDROMETER_ID): vol.In(options)}
+            ),
+            description_placeholders={"devices_count": str(len(options))},
+        )
+
+    # ------------------------------------------------------------------
+    # Reconfigure
+    # ------------------------------------------------------------------
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Dispatch reconfiguration based on the entry's source type."""
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        source_type = entry.data.get(CONF_SOURCE_TYPE, SOURCE_TYPE_BLUETOOTH)
+        if source_type == SOURCE_TYPE_ENTITY:
+            return await self.async_step_reconfigure_entity()
+        if source_type == SOURCE_TYPE_CLOUD:
+            return await self.async_step_reconfigure_cloud()
+        return await self.async_step_reconfigure_bluetooth()
+
+    def _reconfigure_entry(self) -> config_entries.ConfigEntry:
+        """Return the entry being reconfigured."""
+        return self.hass.config_entries.async_get_entry(self.context["entry_id"])
+
+    async def _async_apply_reconfigure(
+        self,
+        entry: config_entries.ConfigEntry,
+        data_updates: dict[str, Any],
+        unique_id: str | None = None,
+    ) -> FlowResult:
+        """Apply reconfigured data, reload the entry and finish the flow."""
+        kwargs: dict[str, Any] = {"data": {**entry.data, **data_updates}}
+        if unique_id is not None:
+            kwargs["unique_id"] = unique_id
+        self.hass.config_entries.async_update_entry(entry, **kwargs)
+        await self.hass.config_entries.async_reload(entry.entry_id)
+        return self.async_abort(reason="reconfigure_successful")
+
+    async def async_step_reconfigure_bluetooth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Change the Bluetooth address of an existing entry."""
+        entry = self._reconfigure_entry()
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            new_id = user_input[CONF_RAPT_DEVICE_ID].strip().upper()
+            if not new_id or new_id == "MANUAL":
+                errors["base"] = "invalid_device"
+            elif any(
+                other.unique_id == new_id and other.entry_id != entry.entry_id
+                for other in self._async_current_entries()
+            ):
+                return self.async_abort(reason="already_configured")
+            else:
+                return await self._async_apply_reconfigure(
+                    entry, {CONF_RAPT_DEVICE_ID: new_id}, unique_id=new_id
+                )
+
+        return self.async_show_form(
+            step_id="reconfigure_bluetooth",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_RAPT_DEVICE_ID,
+                        default=entry.data.get(CONF_RAPT_DEVICE_ID),
+                    ): cv.string
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_reconfigure_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Change the source entities of an existing entry."""
+        entry = self._reconfigure_entry()
+
+        if user_input is not None:
+            return await self._async_apply_reconfigure(entry, user_input)
+
+        return self.async_show_form(
+            step_id="reconfigure_entity",
+            data_schema=_entity_schema(dict(entry.data)),
+        )
+
+    async def async_step_reconfigure_cloud(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Change the RAPT cloud credentials of an existing entry."""
+        entry = self._reconfigure_entry()
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            email = user_input[CONF_API_EMAIL].strip()
+            api_secret = user_input[CONF_API_SECRET].strip()
+            error, _hydrometers = await _async_validate_cloud_credentials(
+                self.hass, email, api_secret
+            )
+            if error:
+                errors = error
+            else:
+                return await self._async_apply_reconfigure(
+                    entry,
+                    {CONF_API_EMAIL: email, CONF_API_SECRET: api_secret},
+                )
+
+        return self.async_show_form(
+            step_id="reconfigure_cloud",
+            data_schema=_cloud_credentials_schema(dict(entry.data)),
+            errors=errors,
+        )
+
+    # ------------------------------------------------------------------
+    # Discovery helpers
+    # ------------------------------------------------------------------
 
     async def _async_discover_rapt_devices(self) -> dict[str, Any]:
         """Discover RAPT devices via Bluetooth."""
@@ -285,11 +543,15 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for RAPT Brewing."""
 
+    def _merged(self, user_input: dict[str, Any]) -> dict[str, Any]:
+        """Merge new option values over the existing options."""
+        return {**self.config_entry.options, **user_input}
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Choose what to configure."""
-        menu = ["notifications"]
+        menu = ["notifications", "alerts", "display"]
         if self.config_entry.data.get(CONF_SOURCE_TYPE) == SOURCE_TYPE_ENTITY:
             menu.append("entities")
         return self.async_show_menu(step_id="init", menu_options=menu)
@@ -299,7 +561,7 @@ class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage notification options."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            return self.async_create_entry(title="", data=self._merged(user_input))
 
         notification_services = await self._get_notification_services()
 
@@ -318,6 +580,123 @@ class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
             }
         )
 
+    async def async_step_alerts(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage alert threshold options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=self._merged(user_input))
+
+        options = self.config_entry.options
+        offline_default = (
+            DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD
+            if self.config_entry.data.get(CONF_SOURCE_TYPE) == SOURCE_TYPE_CLOUD
+            else DEFAULT_OFFLINE_TIMEOUT_MINUTES
+        )
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_STUCK_FERMENTATION_HOURS,
+                    default=options.get(
+                        CONF_STUCK_FERMENTATION_HOURS, DEFAULT_STUCK_FERMENTATION_HOURS
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1, max=240, step=1, unit_of_measurement="h",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_TEMPERATURE_HIGH_THRESHOLD,
+                    default=options.get(
+                        CONF_TEMPERATURE_HIGH_THRESHOLD, DEFAULT_TEMPERATURE_HIGH_THRESHOLD
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=-10, max=60, step=0.5, unit_of_measurement="°C",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_TEMPERATURE_LOW_THRESHOLD,
+                    default=options.get(
+                        CONF_TEMPERATURE_LOW_THRESHOLD, DEFAULT_TEMPERATURE_LOW_THRESHOLD
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=-10, max=60, step=0.5, unit_of_measurement="°C",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_LOW_BATTERY_THRESHOLD,
+                    default=options.get(
+                        CONF_LOW_BATTERY_THRESHOLD, DEFAULT_LOW_BATTERY_THRESHOLD
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, max=100, step=1, unit_of_measurement="%",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_OFFLINE_TIMEOUT_MINUTES,
+                    default=options.get(CONF_OFFLINE_TIMEOUT_MINUTES, offline_default),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1, max=1440, step=1, unit_of_measurement="min",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(step_id="alerts", data_schema=schema)
+
+    async def async_step_display(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage display and calibration options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=self._merged(user_input))
+
+        options = self.config_entry.options
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_GRAVITY_UNIT,
+                    default=options.get(CONF_GRAVITY_UNIT, GRAVITY_UNIT_SG),
+                ): vol.In(
+                    {
+                        GRAVITY_UNIT_SG: "Specific gravity (SG)",
+                        GRAVITY_UNIT_PLATO: "Degrees Plato (°P)",
+                    }
+                ),
+                vol.Required(
+                    CONF_GRAVITY_OFFSET,
+                    default=options.get(CONF_GRAVITY_OFFSET, 0.0),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=-0.050, max=0.050, step=0.001, unit_of_measurement="SG",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_TEMPERATURE_OFFSET,
+                    default=options.get(CONF_TEMPERATURE_OFFSET, 0.0),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=-5.0, max=5.0, step=0.1, unit_of_measurement="°C",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(step_id="display", data_schema=schema)
+
     async def async_step_entities(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -327,8 +706,10 @@ class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
             self.hass.config_entries.async_update_entry(
                 self.config_entry, data=new_data
             )
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
+            # The entry update listener reloads the entry; keep options as-is
+            return self.async_create_entry(
+                title="", data=dict(self.config_entry.options)
+            )
 
         return self.async_show_form(
             step_id="entities",

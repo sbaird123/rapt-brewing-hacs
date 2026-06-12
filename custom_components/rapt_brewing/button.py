@@ -23,6 +23,11 @@ BUTTON_TYPES: tuple[ButtonEntityDescription, ...] = (
         icon="mdi:play-circle",
     ),
     ButtonEntityDescription(
+        key="stop_session",
+        name="Stop Current Session",
+        icon="mdi:stop-circle",
+    ),
+    ButtonEntityDescription(
         key="delete_session",
         name="Delete Current Session",
         icon="mdi:delete-circle",
@@ -73,29 +78,18 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
 
         if self.entity_description.key == "start_session":
             await self._start_session()
+        elif self.entity_description.key == "stop_session":
+            await self._stop_session()
         elif self.entity_description.key == "delete_session":
             await self._delete_session()
         elif self.entity_description.key == "clear_alerts":
             await self._clear_alerts()
 
     async def _start_session(self) -> None:
-        """Start a new brewing session."""
-        # Automatically stop any existing session
-        if self.coordinator.data.current_session:
-            existing_session = self.coordinator.data.current_session
-            _LOGGER.info("RAPT BUTTON: Auto-stopping existing session: %s", existing_session.name)
-            await self.coordinator.stop_session(existing_session.id)
-            
-        # This would typically open a dialog or form
-        # For now, we'll create a default session
-        # Create a better default name with timestamp
+        """Start a new brewing session (any active session is auto-stopped)."""
         import homeassistant.util.dt as dt_util
         session_name = f"Brew {dt_util.now().strftime('%Y-%m-%d %H:%M')}"
-        
-        # Check if there's a custom session name from text input
-        # This is a simplified approach - in a real implementation you'd want
-        # to get the text input value, but for now we'll use the default
-        
+
         session_id = await self.coordinator.start_session(
             name=session_name,
             recipe=None,
@@ -108,6 +102,16 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
 
         # Refresh coordinator data
         await self.coordinator.async_request_refresh()
+
+    async def _stop_session(self) -> None:
+        """Stop the current brewing session."""
+        session = self.coordinator.data.current_session
+        if session:
+            await self.coordinator.stop_session(session.id)
+            _LOGGER.info("RAPT BUTTON: Stopped session: %s (%s)", session.name, session.id)
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.info("RAPT BUTTON: Cannot stop session, no current session")
 
     async def _delete_session(self) -> None:
         """Delete the current brewing session."""

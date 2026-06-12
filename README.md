@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/sbaird123/rapt-brewing-hacs?style=for-the-badge)](LICENSE)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydrometers via Bluetooth.
+A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydrometers — via direct Bluetooth, existing Home Assistant entities (e.g. a Shelly BLE proxy), or the RAPT cloud API.
 
 ![RAPT Brewing Dashboard](docs/dashboard-screenshot.png)
 
@@ -13,9 +13,13 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 
 ## Features
 
-- **🍺 Session Monitoring**: Start/stop sessions with auto-detection of original gravity
+- **🍺 Session Monitoring**: Start/stop sessions with auto-detection of original gravity, plus browsable session history
 - **📊 Advanced Calculations**: Real-time ABV, attenuation, fermentation rate with scientifically accurate temperature correction
-- **🔔 Smart Alerts**: Context-aware stuck fermentation, temperature warnings, completion detection, low battery
+- **🔔 Smart Alerts**: Configurable stuck fermentation, temperature, completion and low-battery alerts — plus `rapt_brewing_alert` events for automations
+- **📡 Three Data Sources**: Direct Bluetooth, Home Assistant entities (BLE proxies), or the RAPT cloud API
+- **🔌 Offline Detection**: A connectivity sensor tells you when the Pill stops reporting instead of silently showing stale data
+- **🛠 Calibration & Units**: Per-device gravity/temperature offsets and SG or °Plato display
+- **🤖 Services**: `start_session`, `stop_session`, and `add_session_note` for scripts and automations
 - **📈 Comprehensive Data**: 20+ sensors including accelerometer and fermentation activity
 - **📱 Dashboard Ready**: Complete mobile and desktop Lovelace configurations
 
@@ -32,9 +36,15 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 
 ## Configuration
 
-**Requirements:** Home Assistant 2023.9.0+, Bluetooth enabled, RAPT Pill device
+**Requirements:** Home Assistant 2024.6.0+, RAPT Pill device
 
-**Setup:** Settings → Devices & Services → Add Integration → Search "RAPT Brewing Session Manager" → Select your device → Submit
+**Setup:** Settings → Devices & Services → Add Integration → Search "RAPT Brewing Session Manager", then pick a data source:
+
+- **Direct Bluetooth** — your HA server (or an ESPHome Bluetooth proxy) hears the Pill directly. Discovered Pills are offered automatically; you can also enter the address manually.
+- **Home Assistant entities** — point the integration at existing gravity/temperature/battery sensors (e.g. created by a Shelly BLE gateway).
+- **RAPT cloud** — sign in with your RAPT portal email and an API secret (create one at app.rapt.io under Account → API Secrets) and pick your hydrometer. Useful when the Pill is out of Bluetooth range entirely.
+
+After setup, **Configure** offers Notifications, Alert thresholds (including the offline timeout), Display & calibration (SG/°Plato, gravity/temperature offsets), and source entity changes. The **Reconfigure** menu item lets you change the Bluetooth address, source entities, or cloud credentials without losing history.
 
 ## Usage
 
@@ -95,11 +105,30 @@ The integration uses scientifically accurate temperature correction based on res
 ## Alerts & Notifications
 
 ### Alert Types
-- **Stuck Fermentation**: No gravity change for 48+ hours (once per session)  
+All thresholds are configurable under **Configure → Alert thresholds** (defaults shown):
+- **Stuck Fermentation**: No gravity change for 48+ hours (once per session)
 - **Temperature High**: Above 30°C (86°F) during fermentation (once per hour)
 - **Temperature Low**: Below 10°C (50°F) during early/mid fermentation only (cold crash at 70%+ attenuation is expected)
-- **Fermentation Complete**: Target gravity reached
+- **Fermentation Complete**: Target gravity reached (once per session)
 - **Low Battery**: Below 20% (only after battery calibration)
+
+Every alert also fires a `rapt_brewing_alert` event on the Home Assistant bus
+(`alert_type`, `message`, `session_id`, `session_name`, `entry_id`), so you can
+build automations like:
+
+```yaml
+automation:
+  - alias: Chill on high ferment temperature
+    trigger:
+      - platform: event
+        event_type: rapt_brewing_alert
+        event_data:
+          alert_type: temperature_high
+    action:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.glycol_chiller
+```
 
 ### Notification Configuration
 Alerts automatically create Home Assistant persistent notifications in the UI. For external notifications:
@@ -113,6 +142,22 @@ First, ensure you have a notification service configured (mobile app, Telegram, 
 4. Click **Submit**
 
 **Done!** The integration automatically sends alerts to your chosen notification service with rich data including alert type, session name, and brewing status.
+
+## Services
+
+For scripts and automations (all accept an optional `device_id` when you have multiple entries):
+
+```yaml
+service: rapt_brewing.start_session
+data:
+  session_name: "West Coast IPA"
+  recipe: "Cascade + Citra"
+  target_gravity: 1.012
+  target_temperature: 19
+```
+
+`rapt_brewing.stop_session` stops the current session, and
+`rapt_brewing.add_session_note` appends a timestamped note to it.
 
 ## Troubleshooting
 

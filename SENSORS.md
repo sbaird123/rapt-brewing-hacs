@@ -1,20 +1,21 @@
-# RAPT Brewing - Complete Sensor List
+# RAPT Brewing - Complete Entity List
 
 ## Core Brewing Sensors
 | Sensor | Description | Unit |
 |--------|-------------|------|
 | `session_name` | Current session name | - |
-| `original_gravity` | Starting gravity | SG |
-| `current_gravity` | Current specific gravity (raw) | SG |
-| `current_gravity_temp_corrected` | Temperature-corrected gravity | SG |
-| `current_gravity_pressure_corrected` | Pressure-corrected gravity (CO2 compensated) | SG |
-| `dissolved_co2` | Dissolved CO2 levels | g/L |
-| `target_gravity` | Target final gravity | SG |
+| `original_gravity` | Starting gravity | SG or °P |
+| `current_gravity` | Current specific gravity (raw) | SG or °P |
+| `current_gravity_temp_corrected` | Temperature-corrected gravity | SG or °P |
+| `target_gravity` | Target final gravity | SG or °P |
 | `alcohol_percentage` | Calculated alcohol by volume | % |
 | `attenuation` | Apparent attenuation | % |
-| `fermentation_rate` | Gravity change rate | SG/hr |
+| `fermentation_rate` | Gravity change rate (uses official RAPT gravity velocity when available) | SG/hr |
 | `current_temperature` | Current temperature | °C |
 | `target_temperature` | Target fermentation temperature | °C |
+
+Gravity sensors display in SG by default; switch to degrees Plato under
+**Configure → Display & calibration**.
 
 ## Device & Status Sensors
 | Sensor | Description | Unit |
@@ -28,7 +29,7 @@
 ## Advanced Sensors
 | Sensor | Description | Unit |
 |--------|-------------|------|
-| `gravity_velocity` | Official RAPT gravity velocity | SG/day |
+| `gravity_velocity` | Official RAPT gravity velocity (v2 firmware) | points/day |
 | `accelerometer_x` | X-axis acceleration | g |
 | `accelerometer_y` | Y-axis acceleration | g |
 | `accelerometer_z` | Z-axis acceleration | g |
@@ -38,18 +39,45 @@
 | `device_type` | Device type information | - |
 | `data_format_version` | BLE data format version | - |
 
-## Pressure Fermentation Controls
+Live device readings (gravity, temperature, battery, accelerometer, etc.)
+become **unavailable** when the device is offline, so a dead battery doesn't
+masquerade as a stable fermentation.
 
-| Control | Description | Unit |
-|---------|-------------|------|
-| `starting_pressure` | Starting fermentation pressure | PSI |
-| `current_pressure` | Current vessel pressure | PSI |
+## Binary Sensors
+| Sensor | Description |
+|--------|-------------|
+| `device_online` | Connectivity — on while fresh data arrives within the offline timeout (configurable) |
+
+## Controls
+| Entity | Type | Description |
+|--------|------|-------------|
+| `start_session` | button | Start a new session (auto-stops any active one) |
+| `stop_session` | button | Stop the current session |
+| `delete_session` | button | Delete the current session |
+| `clear_alerts` | button | Acknowledge all alerts |
+| `session` | select | Browse session history — switch which session the sensors display |
+| `session_name` | text | Rename the current session |
+| `target_gravity` / `original_gravity` / `target_temperature` | number | Session parameters (always SG / °C) |
+
+## Services
+| Service | Description |
+|---------|-------------|
+| `rapt_brewing.start_session` | Start a named session with optional recipe, OG, target gravity/temperature |
+| `rapt_brewing.stop_session` | Stop the current session |
+| `rapt_brewing.add_session_note` | Append a timestamped note to the current session |
+
+All services accept an optional `device_id` to target a specific entry when
+multiple RAPT devices are configured.
+
+## Events
+
+Every alert fires a `rapt_brewing_alert` event on the Home Assistant bus with
+`alert_type`, `message`, `session_id`, `session_name`, and `entry_id` —
+useful for automations (e.g. turn on the glycol chiller on `temperature_high`).
 
 ## Entity Naming
 
-All sensors are prefixed with `sensor.rapt_brewing_session_manager_` in Home Assistant.
-
-For example:
+All entities are prefixed with the device name in Home Assistant, e.g.:
 - `sensor.rapt_brewing_session_manager_current_gravity`
 - `sensor.rapt_brewing_session_manager_alcohol_percentage`
-- `sensor.rapt_brewing_session_manager_fermentation_activity`
+- `binary_sensor.rapt_brewing_session_manager_device_online`

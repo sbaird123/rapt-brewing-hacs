@@ -52,25 +52,48 @@ DATA_SETTINGS: Final = "settings"
 CONF_RAPT_DEVICE_ID: Final = "rapt_device_id"
 CONF_TARGET_GRAVITY: Final = "target_gravity"
 CONF_TARGET_TEMPERATURE: Final = "target_temperature"
-CONF_FERMENTATION_ALERTS: Final = "fermentation_alerts"
-CONF_TEMPERATURE_ALERTS: Final = "temperature_alerts"
-CONF_ALERT_THRESHOLDS: Final = "alert_thresholds"
 CONF_NOTIFICATION_SERVICE: Final = "notification_service"
 CONF_SOURCE_TYPE: Final = "source_type"
 CONF_GRAVITY_ENTITY: Final = "gravity_entity"
 CONF_TEMPERATURE_ENTITY: Final = "temperature_entity"
 CONF_BATTERY_ENTITY: Final = "battery_entity"
 CONF_SIGNAL_ENTITY: Final = "signal_entity"
+CONF_API_EMAIL: Final = "api_email"
+CONF_API_SECRET: Final = "api_secret"
+CONF_HYDROMETER_ID: Final = "hydrometer_id"
+
+# Option keys (configurable alert thresholds, calibration and display)
+CONF_STUCK_FERMENTATION_HOURS: Final = "stuck_fermentation_hours"
+CONF_TEMPERATURE_HIGH_THRESHOLD: Final = "temperature_high_threshold"
+CONF_TEMPERATURE_LOW_THRESHOLD: Final = "temperature_low_threshold"
+CONF_LOW_BATTERY_THRESHOLD: Final = "low_battery_threshold"
+CONF_OFFLINE_TIMEOUT_MINUTES: Final = "offline_timeout_minutes"
+CONF_GRAVITY_OFFSET: Final = "gravity_offset"
+CONF_TEMPERATURE_OFFSET: Final = "temperature_offset"
+CONF_GRAVITY_UNIT: Final = "gravity_unit"
 
 # Data source types
 SOURCE_TYPE_BLUETOOTH: Final = "bluetooth"
 SOURCE_TYPE_ENTITY: Final = "entity"
+SOURCE_TYPE_CLOUD: Final = "cloud"
+
+# Gravity display units
+GRAVITY_UNIT_SG: Final = "sg"
+GRAVITY_UNIT_PLATO: Final = "plato"
+
+# Cloud polling
+CLOUD_SCAN_INTERVAL: Final = 300  # seconds
+
+# Events
+EVENT_RAPT_BREWING_ALERT: Final = "rapt_brewing_alert"
 
 # Default alert thresholds
 DEFAULT_STUCK_FERMENTATION_HOURS: Final = 48
 DEFAULT_TEMPERATURE_HIGH_THRESHOLD: Final = 30.0  # Celsius
 DEFAULT_TEMPERATURE_LOW_THRESHOLD: Final = 10.0  # Celsius
 DEFAULT_LOW_BATTERY_THRESHOLD: Final = 20  # Percentage
+DEFAULT_OFFLINE_TIMEOUT_MINUTES: Final = 15  # Direct Bluetooth / entity sources
+DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD: Final = 120  # Pills report to the cloud much less often
 
 # Fermentation rate thresholds based on real brewing data (SG/hour)
 FERMENTATION_RATE_VIGOROUS: Final = 0.0008  # >19 points/day - peak fermentation

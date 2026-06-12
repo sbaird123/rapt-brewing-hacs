@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-06-12
+
+### ☁️ **New: RAPT Cloud Data Source**
+- **Third data source**: sign in with your RAPT portal email + API secret (app.rapt.io → Account → API Secrets) and pick a hydrometer — useful when the Pill is out of Bluetooth range entirely
+- Polls the official RAPT API every 5 minutes; gravity, temperature, battery and signal are normalised to the same units as the Bluetooth source
+
+### 🔌 **Offline Detection**
+- **New `device_online` connectivity binary sensor**: tells you when the Pill stops reporting (configurable timeout; defaults 15 min for Bluetooth/entity, 2 h for cloud)
+- **Live readings go unavailable when offline** instead of silently showing stale values — a dead battery no longer masquerades as a stable fermentation
+
+### ⚙️ **Configurable Alerts, Calibration & Units**
+- **Alert thresholds page** in options: stuck-fermentation window, high/low temperature, low battery, offline timeout — kveik and lager brewers no longer get false alarms
+- **Display & calibration page**: gravity display in SG or °Plato, plus per-device gravity/temperature calibration offsets applied to all readings
+- **Options now merge correctly**: saving one options page no longer wipes settings from the others
+
+### 🤖 **Services & Events**
+- **New services**: `rapt_brewing.start_session` (name/recipe/OG/targets), `rapt_brewing.stop_session`, `rapt_brewing.add_session_note` — all with optional `device_id` targeting for multi-Pill setups
+- **New `rapt_brewing_alert` event** fired on every alert, so automations can react (e.g. turn on the glycol chiller on `temperature_high`)
+
+### 📜 **Session History & Controls**
+- **New Session select entity**: browse past sessions — sensors display the selected session while live data keeps flowing only into active sessions
+- **New Stop Current Session button** (previously you could only start or delete)
+- **Session summaries preserved**: completed sessions keep OG/FG/ABV/attenuation for review
+
+### 📈 **Data Quality**
+- **Official gravity velocity preferred**: fermentation rate now uses the Pill's own computed velocity (v2 firmware) and falls back to the two-point estimate otherwise
+- **Smart downsampling**: data older than 24 h is thinned to one point per 15 minutes, so a 4-week fermentation fits comfortably instead of losing its head end at the 10,000-point cap
+
+### 🧰 **Developer & Maintenance**
+- **Diagnostics support**: download redacted diagnostics from the device page for bug reports
+- **Native Reconfigure flow**: change the Bluetooth address, source entities, or cloud credentials without deleting the entry (history preserved)
+- **Test suite + CI**: parser/data-model/cloud-parsing tests run on every push alongside hassfest and HACS validation
+- **Docs refreshed**: SENSORS.md no longer lists sensors that never existed (pressure correction, dissolved CO₂)
+
 ## [2.7.0] - 2026-06-12
 
 ### 🐛 **Config Flow Fixes**

@@ -5,9 +5,9 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 ## Features
 
 🍺 **Complete Brewing Session Management**
-- Start, stop, pause, and resume brewing sessions
-- Track multiple sessions with historical data
-- Fermentation stage management (primary → secondary → conditioning → packaging)
+- Start, stop, and delete brewing sessions
+- Track multiple sessions and browse session history
+- Three data sources: direct Bluetooth, HA entities (BLE proxies), or the RAPT cloud API
 
 📊 **Advanced Calculations**
 - Automatic ABV percentage calculation
@@ -17,13 +17,15 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 
 🔔 **Smart Alerts**
 - Stuck fermentation detection
-- Temperature warnings (high/low)
+- Temperature warnings (high/low) with configurable thresholds
 - Fermentation completion notifications
 - Low battery alerts
+- `rapt_brewing_alert` events for automations
 
 📈 **Rich Monitoring**
-- 16 comprehensive sensors
-- Real-time gravity and temperature tracking
+- 20+ comprehensive sensors plus a device connectivity sensor
+- Real-time gravity and temperature tracking (SG or °Plato)
+- Calibration offsets for gravity and temperature
 - Historical data analysis
 - Dashboard-ready configuration
 

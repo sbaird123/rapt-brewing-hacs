@@ -16,6 +16,7 @@ from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
 from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
+    CLOUD_SCAN_INTERVAL,
     CONF_RAPT_DEVICE_ID,
     CONF_NOTIFICATION_SERVICE,
     CONF_SOURCE_TYPE,
@@ -23,8 +24,21 @@ from .const import (
     CONF_TEMPERATURE_ENTITY,
     CONF_BATTERY_ENTITY,
     CONF_SIGNAL_ENTITY,
+    CONF_API_EMAIL,
+    CONF_API_SECRET,
+    CONF_HYDROMETER_ID,
+    CONF_STUCK_FERMENTATION_HOURS,
+    CONF_TEMPERATURE_HIGH_THRESHOLD,
+    CONF_TEMPERATURE_LOW_THRESHOLD,
+    CONF_LOW_BATTERY_THRESHOLD,
+    CONF_OFFLINE_TIMEOUT_MINUTES,
+    CONF_GRAVITY_OFFSET,
+    CONF_TEMPERATURE_OFFSET,
+    CONF_GRAVITY_UNIT,
+    GRAVITY_UNIT_SG,
     SOURCE_TYPE_BLUETOOTH,
     SOURCE_TYPE_ENTITY,
+    SOURCE_TYPE_CLOUD,
     SESSION_STATE_ACTIVE,
     SESSION_STATE_IDLE,
     ALERT_TYPE_STUCK_FERMENTATION,
@@ -36,6 +50,9 @@ from .const import (
     DEFAULT_TEMPERATURE_HIGH_THRESHOLD,
     DEFAULT_TEMPERATURE_LOW_THRESHOLD,
     DEFAULT_LOW_BATTERY_THRESHOLD,
+    DEFAULT_OFFLINE_TIMEOUT_MINUTES,
+    DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD,
+    EVENT_RAPT_BREWING_ALERT,
     FERMENTATION_RATE_STUCK,
     GRAVITY_MIN,
     GRAVITY_MAX,
@@ -44,13 +61,15 @@ from .const import (
     BATTERY_MIN,
     BATTERY_MAX,
 )
-from .data import RAPTBrewingData, BrewingSession, DataPoint, Alert
+from .data import RAPTBrewingData, BrewingSession, DataPoint, Alert, downsample_data_points
 
 _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
 LEGACY_STORAGE_KEY = "rapt_brewing_sessions"
 SAVE_DELAY_SECONDS = 30
+MAX_DATA_POINTS = 10000
+DOWNSAMPLE_TRIGGER = 2000
 
 # Alerts that should fire at most once per session instead of re-notifying
 # every time the deduplication window expires.
@@ -65,18 +84,22 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
+        self.source_type = entry.data.get(CONF_SOURCE_TYPE, SOURCE_TYPE_BLUETOOTH)
+        scan_interval = (
+            CLOUD_SCAN_INTERVAL if self.source_type == SOURCE_TYPE_CLOUD
+            else DEFAULT_SCAN_INTERVAL
+        )
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            update_interval=timedelta(seconds=scan_interval),
         )
         self.entry = entry
         # Storage is scoped per config entry so multiple entries (e.g. two
         # Pills) don't clobber each other's sessions.
         self.store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
         self.data = RAPTBrewingData()
-        self._source_type = entry.data.get(CONF_SOURCE_TYPE, SOURCE_TYPE_BLUETOOTH)
         self._rapt_device_id = entry.data.get(CONF_RAPT_DEVICE_ID)
         if self._rapt_device_id:
             self._rapt_device_id = self._rapt_device_id.upper()
@@ -84,15 +107,83 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         self._entity_cancel_callback = None
         self._signal_strength: int | None = None
         self.ble_device_data = None
+        self._cloud_client = None
         self._last_ingested_at: datetime | None = None
+        self._started_at: datetime = dt_util.utcnow()
+        self.last_data_received: datetime | None = None
 
-        # Current sensor data (BLE or entity-derived)
+        # Current sensor data (BLE, entity or cloud derived)
         self._current_ble_data: Any = None
 
-        if self._source_type == SOURCE_TYPE_ENTITY:
+        if self.source_type == SOURCE_TYPE_ENTITY:
             self._setup_entity_source()
+        elif self.source_type == SOURCE_TYPE_CLOUD:
+            self._setup_cloud_source()
         else:
             self._setup_bluetooth_source(hass)
+
+    # ------------------------------------------------------------------
+    # Options helpers
+    # ------------------------------------------------------------------
+
+    def _opt(self, key: str, default: Any) -> Any:
+        """Read an option with a default."""
+        return self.entry.options.get(key, default)
+
+    @property
+    def stuck_fermentation_hours(self) -> float:
+        """Configured stuck-fermentation alert window in hours."""
+        return float(self._opt(CONF_STUCK_FERMENTATION_HOURS, DEFAULT_STUCK_FERMENTATION_HOURS))
+
+    @property
+    def temperature_high_threshold(self) -> float:
+        """Configured high-temperature alert threshold (°C)."""
+        return float(self._opt(CONF_TEMPERATURE_HIGH_THRESHOLD, DEFAULT_TEMPERATURE_HIGH_THRESHOLD))
+
+    @property
+    def temperature_low_threshold(self) -> float:
+        """Configured low-temperature alert threshold (°C)."""
+        return float(self._opt(CONF_TEMPERATURE_LOW_THRESHOLD, DEFAULT_TEMPERATURE_LOW_THRESHOLD))
+
+    @property
+    def low_battery_threshold(self) -> int:
+        """Configured low-battery alert threshold (%)."""
+        return int(self._opt(CONF_LOW_BATTERY_THRESHOLD, DEFAULT_LOW_BATTERY_THRESHOLD))
+
+    @property
+    def offline_timeout(self) -> timedelta:
+        """How long without fresh data before the device is considered offline."""
+        default = (
+            DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD
+            if self.source_type == SOURCE_TYPE_CLOUD
+            else DEFAULT_OFFLINE_TIMEOUT_MINUTES
+        )
+        return timedelta(minutes=float(self._opt(CONF_OFFLINE_TIMEOUT_MINUTES, default)))
+
+    @property
+    def gravity_offset(self) -> float:
+        """Calibration offset added to raw gravity readings (SG)."""
+        return float(self._opt(CONF_GRAVITY_OFFSET, 0.0))
+
+    @property
+    def temperature_offset(self) -> float:
+        """Calibration offset added to raw temperature readings (°C)."""
+        return float(self._opt(CONF_TEMPERATURE_OFFSET, 0.0))
+
+    @property
+    def gravity_unit(self) -> str:
+        """Configured gravity display unit (sg or plato)."""
+        return self._opt(CONF_GRAVITY_UNIT, GRAVITY_UNIT_SG)
+
+    @property
+    def is_online(self) -> bool:
+        """Return True if fresh data has been received within the offline timeout."""
+        reference = self.last_data_received or self._started_at
+        return dt_util.utcnow() - reference < self.offline_timeout
+
+    # ------------------------------------------------------------------
+    # Data sources
+    # ------------------------------------------------------------------
 
     def _setup_bluetooth_source(self, hass: HomeAssistant) -> None:
         """Wire up direct Bluetooth data ingestion."""
@@ -143,19 +234,32 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             self.hass, tracked, _handle_entity_change
         )
 
+    def _setup_cloud_source(self) -> None:
+        """Wire up RAPT cloud data ingestion."""
+        from homeassistant.helpers import aiohttp_client
+        from .api import RAPTCloudClient
+
+        self._cloud_client = RAPTCloudClient(
+            aiohttp_client.async_get_clientsession(self.hass),
+            self.entry.data[CONF_API_EMAIL],
+            self.entry.data[CONF_API_SECRET],
+        )
+        _LOGGER.debug("RAPT COORDINATOR: Cloud source configured for hydrometer %s",
+                      self.entry.data.get(CONF_HYDROMETER_ID))
+
     def _refresh_from_entities(self) -> None:
         """Build sensor data from the configured HA entities."""
         from .ble_device import RAPTPillSensorData
 
-        gravity = self._validate_gravity(self._safe_float(
+        gravity = self._safe_float(
             self._get_entity_state(self.entry.data.get(CONF_GRAVITY_ENTITY))
-        ))
-        temperature = self._validate_temperature(self._safe_float(
+        )
+        temperature = self._safe_float(
             self._get_entity_state(self.entry.data.get(CONF_TEMPERATURE_ENTITY))
-        ))
-        battery = self._validate_battery(self._safe_int(
+        )
+        battery = self._safe_int(
             self._get_entity_state(self.entry.data.get(CONF_BATTERY_ENTITY))
-        ))
+        )
         signal = self._safe_int(
             self._get_entity_state(self.entry.data.get(CONF_SIGNAL_ENTITY))
         )
@@ -173,12 +277,48 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         )
         self._signal_strength = signal
 
+    async def _refresh_from_cloud(self) -> bool:
+        """Fetch the latest cloud telemetry; returns True if data is new."""
+        from .api import RAPTCloudAuthError, RAPTCloudError
+        from .ble_device import RAPTPillSensorData
+
+        hydrometer_id = self.entry.data[CONF_HYDROMETER_ID]
+        try:
+            record = await self._cloud_client.async_get_latest_telemetry(hydrometer_id)
+        except RAPTCloudAuthError as err:
+            raise UpdateFailed(f"RAPT cloud authentication failed: {err}") from err
+        except RAPTCloudError as err:
+            raise UpdateFailed(f"RAPT cloud error: {err}") from err
+
+        if record is None:
+            _LOGGER.debug("RAPT CLOUD: No telemetry in the last 24h for %s", hydrometer_id)
+            self._current_ble_data = None
+            return False
+
+        self._current_ble_data = RAPTPillSensorData(
+            temperature=record["temperature"],
+            gravity=record["gravity"],
+            battery=record["battery"],
+            signal_strength=record["signal_strength"],
+        )
+        self._signal_strength = record["signal_strength"]
+
+        created_on = record.get("created_on")
+        if created_on is not None and created_on == self._last_ingested_at:
+            return False
+        self._last_ingested_at = created_on or dt_util.utcnow()
+        return True
+
     def _get_entity_state(self, entity_id: str | None) -> Any:
         """Read the current state value of an entity."""
         if not entity_id:
             return None
         state = self.hass.states.get(entity_id)
         return state.state if state else None
+
+    # ------------------------------------------------------------------
+    # Validation and calibration
+    # ------------------------------------------------------------------
 
     def _validate_gravity(self, value: float | None) -> float | None:
         """Reject implausible gravity readings before they reach session state."""
@@ -210,12 +350,32 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                        value, BATTERY_MIN, BATTERY_MAX)
         return None
 
+    def _calibrated_readings(self, ble_data: Any) -> tuple[float | None, float | None, int | None]:
+        """Apply calibration offsets and validation to raw readings."""
+        gravity = ble_data.gravity
+        if gravity is not None:
+            gravity = gravity + self.gravity_offset
+        temperature = ble_data.temperature
+        if temperature is not None:
+            temperature = temperature + self.temperature_offset
+        return (
+            self._validate_gravity(gravity),
+            self._validate_temperature(temperature),
+            self._validate_battery(ble_data.battery),
+        )
+
+    # ------------------------------------------------------------------
+    # Update cycle
+    # ------------------------------------------------------------------
+
     async def _async_update_data(self) -> RAPTBrewingData:
         """Update data from the configured source."""
         try:
-            if self._source_type == SOURCE_TYPE_ENTITY:
+            if self.source_type == SOURCE_TYPE_ENTITY:
                 self._refresh_from_entities()
                 has_new_data = self._current_ble_data is not None
+            elif self.source_type == SOURCE_TYPE_CLOUD:
+                has_new_data = await self._refresh_from_cloud()
             else:
                 self._current_ble_data = self.ble_device_data.get_last_sensor_data()
                 # Only treat the reading as new if a fresh advertisement was
@@ -234,18 +394,27 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                           self._current_ble_data.to_dict() if self._current_ble_data else "None",
                           has_new_data)
 
-            if has_new_data and self.data.current_session:
-                # Update current session with new data
-                await self._update_current_session_ble(self._current_ble_data)
+            if has_new_data:
+                self.last_data_received = dt_util.utcnow()
+                # Ingest into every active session (normally just one), not
+                # only the currently *viewed* session, so browsing history
+                # doesn't interrupt a running fermentation.
+                active_sessions = [
+                    s for s in self.data.sessions.values()
+                    if s.state == SESSION_STATE_ACTIVE
+                ]
+                for session in active_sessions:
+                    await self._ingest_data(session, self._current_ble_data)
+                    await self._check_alerts(session, self._current_ble_data)
 
-                # Check for alerts
-                await self._check_alerts_ble(self._current_ble_data)
-
-                # Save data to storage (delayed, to limit disk writes)
-                self._schedule_save()
+                if active_sessions:
+                    # Save data to storage (delayed, to limit disk writes)
+                    self._schedule_save()
 
             return self.data
 
+        except UpdateFailed:
+            raise
         except Exception as err:
             raise UpdateFailed(f"Error updating RAPT brewing data: {err}") from err
 
@@ -255,21 +424,15 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
 
     def get_ble_signal_strength(self) -> int | None:
         """Get BLE signal strength."""
-        if self._source_type == SOURCE_TYPE_ENTITY:
+        if self.source_type in (SOURCE_TYPE_ENTITY, SOURCE_TYPE_CLOUD):
             return self._signal_strength
         service_info = self.ble_device_data.get_last_service_info()
         return service_info.rssi if service_info else None
 
-    async def _update_current_session_ble(self, ble_data: Any) -> None:
-        """Update current session with new BLE data."""
-        if not self.data.current_session:
-            return
+    async def _ingest_data(self, session: BrewingSession, ble_data: Any) -> None:
+        """Add new sensor data to a brewing session."""
+        gravity, temperature, battery = self._calibrated_readings(ble_data)
 
-        gravity = self._validate_gravity(ble_data.gravity)
-        temperature = self._validate_temperature(ble_data.temperature)
-        battery = self._validate_battery(ble_data.battery)
-
-        session = self.data.current_session
         now = dt_util.now()
 
         # Get signal strength from BLE service info
@@ -314,9 +477,11 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         # Calculate derived values
         self._calculate_derived_values(session)
 
-        # Limit data points to prevent unlimited growth
-        if len(session.data_points) > 10000:
-            session.data_points = session.data_points[-10000:]
+        # Thin out old data points, then enforce the hard cap
+        if len(session.data_points) >= DOWNSAMPLE_TRIGGER:
+            session.data_points = downsample_data_points(session.data_points, now)
+        if len(session.data_points) > MAX_DATA_POINTS:
+            session.data_points = session.data_points[-MAX_DATA_POINTS:]
 
     def _calculate_derived_values(self, session: BrewingSession) -> None:
         """Calculate derived values for the session."""
@@ -366,8 +531,18 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             _LOGGER.debug("RAPT CALC: Cannot calculate attenuation - OG=%s, CG_corrected=%s",
                           session.original_gravity, corrected_gravity)
 
-        # Calculate fermentation rate using temperature-corrected gravity
-        if len(session.data_points) >= 2:
+        # Fermentation rate: prefer the Pill's officially computed gravity
+        # velocity (points/day, v2 firmware) over our own two-point estimate.
+        official_velocity = None
+        for dp in reversed(session.data_points[-5:]):
+            if dp.gravity_velocity is not None:
+                official_velocity = dp.gravity_velocity
+                break
+
+        if official_velocity is not None:
+            # points/day → SG/hour (1 point = 0.001 SG)
+            session.fermentation_rate = official_velocity / 1000.0 / 24.0
+        elif len(session.data_points) >= 2:
             recent_points = [
                 dp for dp in session.data_points[-24:]  # Last 24 data points
                 if dp.gravity is not None and dp.temperature is not None
@@ -419,18 +594,17 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         # Remove thermal expansion/contraction effects to get true density
         return gravity - thermal_effect
 
-    async def _check_alerts_ble(self, ble_data: Any) -> None:
-        """Check for brewing alerts using BLE data."""
-        if not self.data.current_session:
-            return
+    # ------------------------------------------------------------------
+    # Alerts
+    # ------------------------------------------------------------------
 
-        session = self.data.current_session
+    async def _check_alerts(self, session: BrewingSession, ble_data: Any) -> None:
+        """Check for brewing alerts on a session using new sensor data."""
         now = dt_util.now()
 
-        # Use validated readings so a garbage spike rejected from the session
-        # can't trigger alerts either.
-        temperature = self._validate_temperature(ble_data.temperature)
-        battery = self._validate_battery(ble_data.battery)
+        # Use calibrated + validated readings so a garbage spike rejected
+        # from the session can't trigger alerts either.
+        _gravity, temperature, battery = self._calibrated_readings(ble_data)
 
         # Check for stuck fermentation using scientifically accurate threshold
         if (session.fermentation_rate is not None
@@ -447,24 +621,25 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 # Gravity never changed significantly - measure from session start
                 last_significant_change = session.data_points[0].timestamp
 
-            if (now - last_significant_change).total_seconds() > DEFAULT_STUCK_FERMENTATION_HOURS * 3600:
+            stuck_hours = self.stuck_fermentation_hours
+            if (now - last_significant_change).total_seconds() > stuck_hours * 3600:
                 await self._add_alert(
                     session,
                     ALERT_TYPE_STUCK_FERMENTATION,
-                    f"Fermentation appears to be stuck - no gravity change in {DEFAULT_STUCK_FERMENTATION_HOURS} hours"
+                    f"Fermentation appears to be stuck - no gravity change in {stuck_hours:g} hours"
                 )
 
         # Check temperature alerts - only alert when conditions are concerning
         if temperature is not None:
             # Hot temperature during active fermentation is concerning
-            if temperature > DEFAULT_TEMPERATURE_HIGH_THRESHOLD:
+            if temperature > self.temperature_high_threshold:
                 await self._add_alert(
                     session,
                     ALERT_TYPE_TEMPERATURE_HIGH,
                     f"Temperature too high: {temperature:.1f}°C"
                 )
             # Cold temperature alert only if fermentation isn't near completion (cold crash expected)
-            elif temperature < DEFAULT_TEMPERATURE_LOW_THRESHOLD:
+            elif temperature < self.temperature_low_threshold:
                 # Only alert if attenuation < 70% (early/mid fermentation)
                 # Cold crash at 70%+ attenuation is expected and normal
                 if session.attenuation is None or session.attenuation < 70.0:
@@ -493,7 +668,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
 
             # Only warn about low battery if it's been calibrated (prevents 0% startup warnings)
             if (session.battery_calibrated and
-                battery < DEFAULT_LOW_BATTERY_THRESHOLD):
+                battery < self.low_battery_threshold):
                 await self._add_alert(
                     session,
                     ALERT_TYPE_LOW_BATTERY,
@@ -532,6 +707,18 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
 
         _LOGGER.warning("RAPT ALERT TRIGGERED: Type=%s, Message=%s, Session=%s",
                        alert_type, message, session.name)
+
+        # Fire an event so users can build automations on alerts
+        self.hass.bus.async_fire(
+            EVENT_RAPT_BREWING_ALERT,
+            {
+                "entry_id": self.entry.entry_id,
+                "alert_type": alert_type,
+                "message": message,
+                "session_id": session.id,
+                "session_name": session.name,
+            },
+        )
 
         # Send Home Assistant persistent notification
         try:
@@ -577,11 +764,21 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             except Exception as e:
                 _LOGGER.warning("RAPT ALERT: Failed to send external notification via %s: %s", notification_service, e)
 
+    # ------------------------------------------------------------------
+    # Session management
+    # ------------------------------------------------------------------
+
     async def start_session(self, name: str, recipe: str | None = None,
                           original_gravity: float | None = None,
                           target_gravity: float | None = None,
                           target_temperature: float | None = None) -> str:
-        """Start a new brewing session."""
+        """Start a new brewing session, stopping any currently active ones."""
+        for existing in self.data.sessions.values():
+            if existing.state == SESSION_STATE_ACTIVE:
+                existing.state = SESSION_STATE_IDLE
+                existing.completed_at = dt_util.now()
+                _LOGGER.info("RAPT SESSION: Auto-stopped session: %s", existing.name)
+
         session_id = f"session_{dt_util.now().strftime('%Y%m%d_%H%M%S')}"
 
         session = BrewingSession(
@@ -646,6 +843,27 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
 
         self.data.remove_session(session_id)
         await self.async_save_data()
+
+    async def select_session(self, session_id: str) -> None:
+        """Switch the currently viewed session."""
+        self.data.set_current_session(session_id)
+        await self.async_save_data()
+        await self.async_request_refresh()
+
+    async def add_session_note(self, note: str) -> None:
+        """Append a timestamped note to the current session."""
+        session = self.data.current_session
+        if not session:
+            raise ValueError("No current brewing session to add a note to")
+
+        line = f"[{dt_util.now().strftime('%Y-%m-%d %H:%M')}] {note.strip()}"
+        session.notes = f"{session.notes}\n{line}" if session.notes else line
+        await self.async_save_data()
+        await self.async_request_refresh()
+
+    # ------------------------------------------------------------------
+    # Storage
+    # ------------------------------------------------------------------
 
     def _data_to_save(self) -> dict[str, Any]:
         """Build the storage payload."""
