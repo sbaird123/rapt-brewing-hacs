@@ -8,12 +8,23 @@
           "source_type": "Data source"
         }
       },
-      "bluetooth": {
+      "bluetooth_select": {
         "title": "RAPT Pill - Direct Bluetooth",
-        "description": "Select a RAPT Pill discovered via Bluetooth, or enter a device ID manually. Found {devices_count} RAPT device(s).",
+        "description": "Select a RAPT Pill discovered via Bluetooth, or enter a device address manually. Found {devices_count} RAPT device(s).",
         "data": {
           "rapt_device_id": "RAPT Device"
         }
+      },
+      "bluetooth_manual": {
+        "title": "RAPT Pill - Manual Address",
+        "description": "Enter the Bluetooth address of your RAPT Pill (e.g. AA:BB:CC:DD:EE:FF).",
+        "data": {
+          "rapt_device_id": "Bluetooth address"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "RAPT Pill Discovered",
+        "description": "Do you want to add the RAPT Pill at {address} to Home Assistant?"
       },
       "entity": {
         "title": "RAPT Pill - Home Assistant entities",

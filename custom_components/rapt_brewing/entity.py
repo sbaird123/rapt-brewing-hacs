@@ -37,5 +37,4 @@ class RAPTBrewingEntity(CoordinatorEntity):
             name=self._entry.title or "RAPT Brewing Session Manager",
             manufacturer="RAPT",
             model="Brewing Session Manager",
-            sw_version="1.0.0",
         )

@@ -104,15 +104,15 @@ class RAPTBrewingNumber(RAPTBrewingEntity, NumberEntity):
         
         if self.entity_description.key == "target_gravity":
             session.target_gravity = value
-            _LOGGER.warning("RAPT NUMBER: Set target gravity to %.3f for session: %s", value, session.name)
+            _LOGGER.info("RAPT NUMBER: Set target gravity to %.3f for session: %s", value, session.name)
         elif self.entity_description.key == "original_gravity":
             session.original_gravity = value
-            _LOGGER.warning("RAPT NUMBER: Set original gravity to %.3f for session: %s", value, session.name)
+            _LOGGER.info("RAPT NUMBER: Set original gravity to %.3f for session: %s", value, session.name)
         elif self.entity_description.key == "target_temperature":
             session.target_temperature = value
-            _LOGGER.warning("RAPT NUMBER: Set target temperature to %.1f°C for session: %s", value, session.name)
-        
-        await self.coordinator._save_data()
+            _LOGGER.info("RAPT NUMBER: Set target temperature to %.1f°C for session: %s", value, session.name)
+
+        await self.coordinator.async_save_data()
         await self.coordinator.async_request_refresh()
 
     @property

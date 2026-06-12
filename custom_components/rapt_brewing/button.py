@@ -66,10 +66,11 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Handle button press."""
-        _LOGGER.warning("RAPT BUTTON PRESSED: %s", self.entity_description.key)
-        _LOGGER.warning("RAPT BUTTON Current session: %s", 
-                       self.coordinator.data.current_session.name if self.coordinator.data.current_session else "None")
-        
+        _LOGGER.debug("RAPT BUTTON PRESSED: %s (current session: %s)",
+                      self.entity_description.key,
+                      self.coordinator.data.current_session.name if self.coordinator.data.current_session else "None")
+
+
         if self.entity_description.key == "start_session":
             await self._start_session()
         elif self.entity_description.key == "delete_session":
@@ -82,7 +83,7 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
         # Automatically stop any existing session
         if self.coordinator.data.current_session:
             existing_session = self.coordinator.data.current_session
-            _LOGGER.warning("RAPT BUTTON: Auto-stopping existing session: %s", existing_session.name)
+            _LOGGER.info("RAPT BUTTON: Auto-stopping existing session: %s", existing_session.name)
             await self.coordinator.stop_session(existing_session.id)
             
         # This would typically open a dialog or form
@@ -103,8 +104,8 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             target_temperature=None,
         )
         
-        _LOGGER.warning("RAPT BUTTON: Started new session: %s", session_id)
-        
+        _LOGGER.info("RAPT BUTTON: Started new session: %s", session_id)
+
         # Refresh coordinator data
         await self.coordinator.async_request_refresh()
 
@@ -114,28 +115,28 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
             session_id = self.coordinator.data.current_session.id
             session_name = self.coordinator.data.current_session.name
             await self.coordinator.delete_session(session_id)
-            _LOGGER.warning("RAPT BUTTON: Deleted session: %s (%s)", session_name, session_id)
+            _LOGGER.info("RAPT BUTTON: Deleted session: %s (%s)", session_name, session_id)
             await self.coordinator.async_request_refresh()
         else:
-            _LOGGER.warning("RAPT BUTTON: Cannot delete session, no current session")
-    
+            _LOGGER.info("RAPT BUTTON: Cannot delete session, no current session")
+
     async def _clear_alerts(self) -> None:
         """Clear all alerts for the current session."""
         if self.coordinator.data.current_session:
             session = self.coordinator.data.current_session
             alert_count = len([alert for alert in session.alerts if not alert.acknowledged])
-            
+
             # Mark all alerts as acknowledged
             for alert in session.alerts:
                 alert.acknowledged = True
-            
-            await self.coordinator._save_data()
+
+            await self.coordinator.async_save_data()
             await self.coordinator.async_request_refresh()
-            
-            _LOGGER.warning("RAPT BUTTON: Cleared %d alert(s) for session: %s", 
-                           alert_count, session.name)
+
+            _LOGGER.info("RAPT BUTTON: Cleared %d alert(s) for session: %s",
+                         alert_count, session.name)
         else:
-            _LOGGER.warning("RAPT BUTTON: Cannot clear alerts, no current session")
+            _LOGGER.info("RAPT BUTTON: Cannot clear alerts, no current session")
 
     @property
     def available(self) -> bool:

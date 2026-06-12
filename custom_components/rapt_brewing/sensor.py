@@ -14,6 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -112,8 +113,9 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         key="session_duration",
         name="Session Duration",
         icon="mdi:clock-outline",
-        native_unit_of_measurement="hours",
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="active_alerts",
@@ -249,19 +251,19 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         elif self.entity_description.key == "alcohol_percentage":
             return (
                 round(self.coordinator.data.current_session.alcohol_percentage, 2)
-                if self.coordinator.data.current_session and self.coordinator.data.current_session.alcohol_percentage
+                if self.coordinator.data.current_session and self.coordinator.data.current_session.alcohol_percentage is not None
                 else None
             )
         elif self.entity_description.key == "attenuation":
             return (
                 round(self.coordinator.data.current_session.attenuation, 1)
-                if self.coordinator.data.current_session and self.coordinator.data.current_session.attenuation
+                if self.coordinator.data.current_session and self.coordinator.data.current_session.attenuation is not None
                 else None
             )
         elif self.entity_description.key == "fermentation_rate":
             return (
                 round(self.coordinator.data.current_session.fermentation_rate, 6)
-                if self.coordinator.data.current_session and self.coordinator.data.current_session.fermentation_rate
+                if self.coordinator.data.current_session and self.coordinator.data.current_session.fermentation_rate is not None
                 else None
             )
         elif self.entity_description.key == "current_temperature":
@@ -311,43 +313,38 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
         elif self.entity_description.key == "gravity_velocity":
             if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
                 latest_point = self.coordinator.data.current_session.data_points[-1]
-                return getattr(latest_point, 'gravity_velocity', None)
+                return latest_point.gravity_velocity
             return None
         elif self.entity_description.key == "accelerometer_x":
             if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
                 latest_point = self.coordinator.data.current_session.data_points[-1]
-                return getattr(latest_point, 'accelerometer_x', None)
+                return latest_point.accelerometer_x
             return None
         elif self.entity_description.key == "accelerometer_y":
             if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
                 latest_point = self.coordinator.data.current_session.data_points[-1]
-                return getattr(latest_point, 'accelerometer_y', None)
+                return latest_point.accelerometer_y
             return None
         elif self.entity_description.key == "accelerometer_z":
             if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
                 latest_point = self.coordinator.data.current_session.data_points[-1]
-                return getattr(latest_point, 'accelerometer_z', None)
+                return latest_point.accelerometer_z
             return None
         elif self.entity_description.key == "device_stability":
             return self._calculate_device_stability()
         elif self.entity_description.key == "fermentation_activity":
             return self._calculate_fermentation_activity()
+        # Device-level values come from the live BLE data, not session data points
         elif self.entity_description.key == "firmware_version":
-            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
-                latest_point = self.coordinator.data.current_session.data_points[-1]
-                return getattr(latest_point, 'firmware_version', None)
-            return None
+            ble_data = self.coordinator.get_current_ble_data()
+            return ble_data.firmware_version if ble_data else None
         elif self.entity_description.key == "device_type":
-            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
-                latest_point = self.coordinator.data.current_session.data_points[-1]
-                return getattr(latest_point, 'device_type', None)
-            return None
+            ble_data = self.coordinator.get_current_ble_data()
+            return ble_data.device_type if ble_data else None
         elif self.entity_description.key == "data_format_version":
-            if self.coordinator.data.current_session and self.coordinator.data.current_session.data_points:
-                latest_point = self.coordinator.data.current_session.data_points[-1]
-                return getattr(latest_point, 'data_format_version', None)
-            return None
-        
+            ble_data = self.coordinator.get_current_ble_data()
+            return ble_data.data_format_version if ble_data else None
+
         return None
 
     @property
@@ -583,9 +580,5 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        # Some sensors are always available
-        if self.entity_description.key in ("total_sessions", "session_state"):
-            return True
-        
-        # Most sensors require an active session
+        # All session sensors require an active session
         return self.coordinator.data.current_session is not None

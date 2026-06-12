@@ -76,9 +76,9 @@ class RAPTBrewingText(RAPTBrewingEntity, TextEntity):
         """Set session name."""
         if self.coordinator.data.current_session and name.strip():
             self.coordinator.data.current_session.name = name.strip()
-            await self.coordinator._save_data()
+            await self.coordinator.async_save_data()
             await self.coordinator.async_request_refresh()
-            _LOGGER.warning("RAPT TEXT: Updated session name to: %s", name.strip())
+            _LOGGER.info("RAPT TEXT: Updated session name to: %s", name.strip())
 
     @property
     def available(self) -> bool:

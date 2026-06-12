@@ -97,6 +97,7 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize the config flow."""
         self._discovered_devices: dict[str, Any] = {}
+        self._discovery_info: Any = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -105,58 +106,103 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if user_input[CONF_SOURCE_TYPE] == SOURCE_TYPE_ENTITY:
                 return await self.async_step_entity()
-            return await self.async_step_bluetooth()
+            return await self.async_step_bluetooth_select()
 
         return self.async_show_form(
             step_id="user",
             data_schema=SOURCE_TYPE_SCHEMA,
         )
 
-    async def async_step_bluetooth(
+    async def async_step_bluetooth(self, discovery_info: Any) -> FlowResult:
+        """Handle a RAPT Pill discovered via Bluetooth (manifest matchers)."""
+        address = discovery_info.address.upper()
+        await self.async_set_unique_id(address)
+        self._abort_if_unique_id_configured()
+        self._discovery_info = discovery_info
+        self.context["title_placeholders"] = {"name": f"RAPT Pill ({address})"}
+        return await self.async_step_bluetooth_confirm()
+
+    async def async_step_bluetooth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Confirm adding a discovered RAPT Pill."""
+        address = self._discovery_info.address.upper()
+        if user_input is not None:
+            return self.async_create_entry(
+                title=f"RAPT Pill ({address[:8]}...)",
+                data={
+                    CONF_SOURCE_TYPE: SOURCE_TYPE_BLUETOOTH,
+                    CONF_RAPT_DEVICE_ID: address,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="bluetooth_confirm",
+            description_placeholders={"address": address},
+        )
+
+    async def async_step_bluetooth_select(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Configure a direct Bluetooth data source."""
-        errors: dict[str, str] = {}
-
         discovered_devices = await self._async_discover_rapt_devices()
 
         if user_input is not None:
             rapt_device_id = user_input[CONF_RAPT_DEVICE_ID]
+            if rapt_device_id == "manual":
+                return await self.async_step_bluetooth_manual()
+            return await self._async_create_bluetooth_entry(rapt_device_id)
 
-            await self.async_set_unique_id(rapt_device_id)
-            self._abort_if_unique_id_configured()
+        if not discovered_devices:
+            return await self.async_step_bluetooth_manual()
 
-            if rapt_device_id in self._discovered_devices:
-                title = f"RAPT Pill ({rapt_device_id[:8]}...)"
-            else:
-                title = f"RAPT Brewing - {rapt_device_id}"
-
-            return self.async_create_entry(
-                title=title,
-                data={
-                    CONF_SOURCE_TYPE: SOURCE_TYPE_BLUETOOTH,
-                    CONF_RAPT_DEVICE_ID: rapt_device_id,
-                },
-            )
-
-        if discovered_devices:
-            device_options = {
-                address: f"RAPT Pill ({address[:8]}...)"
-                for address in discovered_devices.keys()
-            }
-            device_options["manual"] = "Enter manually"
-            schema = vol.Schema(
-                {vol.Required(CONF_RAPT_DEVICE_ID): vol.In(device_options)}
-            )
-        else:
-            schema = vol.Schema({vol.Required(CONF_RAPT_DEVICE_ID): cv.string})
+        device_options = {
+            address: f"RAPT Pill ({address[:8]}...)"
+            for address in discovered_devices.keys()
+        }
+        device_options["manual"] = "Enter manually"
+        schema = vol.Schema(
+            {vol.Required(CONF_RAPT_DEVICE_ID): vol.In(device_options)}
+        )
 
         return self.async_show_form(
-            step_id="bluetooth",
+            step_id="bluetooth_select",
             data_schema=schema,
-            errors=errors,
             description_placeholders={
                 "devices_count": str(len(discovered_devices))
+            },
+        )
+
+    async def async_step_bluetooth_manual(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Enter a Bluetooth device address manually."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            rapt_device_id = user_input[CONF_RAPT_DEVICE_ID].strip().upper()
+            if rapt_device_id and rapt_device_id != "MANUAL":
+                return await self._async_create_bluetooth_entry(rapt_device_id)
+            errors["base"] = "invalid_device"
+
+        return self.async_show_form(
+            step_id="bluetooth_manual",
+            data_schema=vol.Schema({vol.Required(CONF_RAPT_DEVICE_ID): cv.string}),
+            errors=errors,
+        )
+
+    async def _async_create_bluetooth_entry(self, rapt_device_id: str) -> FlowResult:
+        """Create a config entry for a Bluetooth-sourced RAPT Pill."""
+        rapt_device_id = rapt_device_id.strip().upper()
+
+        await self.async_set_unique_id(rapt_device_id)
+        self._abort_if_unique_id_configured()
+
+        return self.async_create_entry(
+            title=f"RAPT Pill ({rapt_device_id[:8]}...)",
+            data={
+                CONF_SOURCE_TYPE: SOURCE_TYPE_BLUETOOTH,
+                CONF_RAPT_DEVICE_ID: rapt_device_id,
             },
         )
 
@@ -233,7 +279,7 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(self, import_info: dict[str, Any]) -> FlowResult:
         """Handle import from configuration.yaml."""
-        return await self.async_step_bluetooth(import_info)
+        return await self.async_step_bluetooth_select(import_info)
 
 
 class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-06-12
+
+### 🐛 **Config Flow Fixes**
+- **"Enter manually" now works**: selecting it previously created a broken entry with the literal device ID `manual`; it now opens a proper address-entry form
+- **Bluetooth discovery no longer crashes**: Home Assistant's automatic Bluetooth discovery (from the manifest matchers) now gets its own confirm step instead of colliding with the device-picker form
+- **Manual addresses normalised**: hand-typed Bluetooth addresses are upper-cased so they match advertisements
+
+### 🛡️ **Data Integrity**
+- **Per-entry session storage**: each config entry now stores sessions in its own file, so two Pills no longer overwrite each other's session history (legacy storage is migrated automatically)
+- **Stale readings no longer re-ingested**: after the Pill goes out of range, the last reading was appended to the session every 60 s forever — inflating data points, faking "Last Reading Time", and skewing fermentation-rate maths. Data points are now only added when a fresh advertisement arrives
+- **v2 telemetry format actually parses**: the v2 packet length check and struct size were wrong, so v2 packets (with gravity velocity) were always rejected; unreachable parser branches removed
+- **Gravity velocity and accelerometer data recorded**: data points now carry velocity/accelerometer values, so the Gravity Velocity, Accelerometer X/Y/Z, Device Stability and Fermentation Activity sensors can report real values; firmware version is parsed from KegLand packets
+- **Zero is no longer "unknown"**: 0.0 % ABV/attenuation and 0.0 °C readings were treated as missing, hiding values and silently disabling temperature correction during cold crash
+
+### 🔔 **Alert Fixes**
+- **"Fermentation complete" alerts once per session** instead of re-notifying every hour until the session is stopped
+- **Stuck fermentation detected from session start**: previously no alert ever fired if gravity had literally never changed
+- **Alerts use validated readings**: an out-of-range temperature/battery spike can no longer trigger an alert after being rejected from the session data
+
+### 🔧 **Reliability & Cleanup**
+- **Listeners cleaned up on unload/reload**: Bluetooth and entity-state callbacks are now cancelled when an entry is unloaded or reconfigured (previously they leaked on every reload)
+- **Setup errors propagate properly** so Home Assistant can retry instead of failing silently
+- **Less disk churn**: periodic session saves are debounced (30 s) instead of rewriting the full history every minute; user actions still save immediately
+- **Quieter logs**: routine BLE/button/coordinator chatter demoted from WARNING to debug/info
+- **Session Duration statistics fixed**: now `measurement`/`duration` instead of `total_increasing`, which corrupted long-term statistics on session changes
+- **Dead code removed**: unused passive-Bluetooth scaffolding, the never-registered services.yaml, and the broken select platform
+
 ## [2.6.3] - 2026-05-07
 
 ### 🐛 **Fixes Options Flow Crash on Existing Entries**

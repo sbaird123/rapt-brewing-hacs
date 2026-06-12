@@ -26,29 +26,32 @@ RAPTBrewingConfigEntry = ConfigEntry
 
 async def async_setup_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) -> bool:
     """Set up RAPT Brewing from a config entry."""
+    # Import coordinator here to avoid blocking imports
+    from .coordinator import RAPTBrewingCoordinator
+
+    coordinator = RAPTBrewingCoordinator(hass, entry)
+
     try:
-        # Import coordinator here to avoid blocking imports
-        from .coordinator import RAPTBrewingCoordinator
-
-        coordinator = RAPTBrewingCoordinator(hass, entry)
-
-        # Do the first refresh (BLE coordinator will start automatically)
         await coordinator.async_config_entry_first_refresh()
+    except Exception:
+        # Don't leak the BLE/entity listeners registered in the constructor
+        await coordinator.async_shutdown()
+        raise
 
-        entry.runtime_data = coordinator
+    entry.runtime_data = coordinator
 
-        # Forward setup to all platforms
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-        return True
-    except Exception as e:
-        _LOGGER.error("Failed to setup RAPT Brewing: %s", e)
-        return False
+    # Forward setup to all platforms
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: RAPTBrewingConfigEntry) -> bool:
     """Unload a config entry."""
-    # BLE coordinator will stop automatically when platforms are unloaded
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        coordinator: RAPTBrewingCoordinator = entry.runtime_data
+        await coordinator.async_shutdown()
+    return unload_ok
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

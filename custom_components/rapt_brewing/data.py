@@ -95,7 +95,11 @@ class DataPoint:
     temperature: float | None = None
     battery_level: int | None = None
     signal_strength: int | None = None
-    
+    gravity_velocity: float | None = None
+    accelerometer_x: float | None = None
+    accelerometer_y: float | None = None
+    accelerometer_z: float | None = None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -104,8 +108,12 @@ class DataPoint:
             "temperature": self.temperature,
             "battery_level": self.battery_level,
             "signal_strength": self.signal_strength,
+            "gravity_velocity": self.gravity_velocity,
+            "accelerometer_x": self.accelerometer_x,
+            "accelerometer_y": self.accelerometer_y,
+            "accelerometer_z": self.accelerometer_z,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DataPoint:
         """Create from dictionary."""
@@ -115,6 +123,10 @@ class DataPoint:
             temperature=data.get("temperature"),
             battery_level=data.get("battery_level"),
             signal_strength=data.get("signal_strength"),
+            gravity_velocity=data.get("gravity_velocity"),
+            accelerometer_x=data.get("accelerometer_x"),
+            accelerometer_y=data.get("accelerometer_y"),
+            accelerometer_z=data.get("accelerometer_z"),
         )
 
 
