@@ -98,7 +98,8 @@
           "notifications": "Notifications",
           "alerts": "Alert thresholds",
           "display": "Display & calibration",
-          "entities": "Source entities"
+          "entities": "Source entities",
+          "temperature_control": "Temperature control"
         }
       },
       "notifications": {
@@ -117,6 +118,23 @@
           "temperature_low_threshold": "Low temperature alert below",
           "low_battery_threshold": "Low battery alert below",
           "offline_timeout_minutes": "Device offline after (minutes)"
+        }
+      },
+      "temperature_control": {
+        "title": "Temperature control",
+        "description": "Pick the switch that powers your heat belt and/or fermentation fridge, then tune the control loop. Heating uses time-proportional control over the cycle window, which suits low-wattage heat belts; cooling uses a deadband with minimum on/off times to protect the compressor. Leave an output empty if you don't have it.",
+        "data": {
+          "heater_switch": "Heater switch (heat belt)",
+          "cooler_switch": "Cooler switch (fridge)",
+          "heat_proportional_band": "Heating proportional band (100% duty this far below target)",
+          "heat_cycle_minutes": "Heating cycle window",
+          "heat_integral_hours": "Heating integral time (0 disables droop correction)",
+          "cool_deadband": "Cooling deadband above target",
+          "cool_min_on_minutes": "Cooling minimum on time",
+          "cool_min_off_minutes": "Cooling minimum off time",
+          "changeover_minutes": "Heat/cool changeover deadtime",
+          "max_heat_overshoot": "Stop heating above target plus",
+          "absolute_max_temperature": "Absolute maximum temperature (hard cutout)"
         }
       },
       "display": {

@@ -46,6 +46,7 @@ from .const import (
     ALERT_TYPE_TEMPERATURE_LOW,
     ALERT_TYPE_FERMENTATION_COMPLETE,
     ALERT_TYPE_LOW_BATTERY,
+    ALERT_TYPE_HEATER_INEFFECTIVE,
     DEFAULT_STUCK_FERMENTATION_HOURS,
     DEFAULT_TEMPERATURE_HIGH_THRESHOLD,
     DEFAULT_TEMPERATURE_LOW_THRESHOLD,
@@ -76,6 +77,7 @@ DOWNSAMPLE_TRIGGER = 2000
 ONCE_PER_SESSION_ALERTS = {
     ALERT_TYPE_STUCK_FERMENTATION,
     ALERT_TYPE_FERMENTATION_COMPLETE,
+    ALERT_TYPE_HEATER_INEFFECTIVE,
 }
 
 
@@ -623,7 +625,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
 
             stuck_hours = self.stuck_fermentation_hours
             if (now - last_significant_change).total_seconds() > stuck_hours * 3600:
-                await self._add_alert(
+                await self.async_add_alert(
                     session,
                     ALERT_TYPE_STUCK_FERMENTATION,
                     f"Fermentation appears to be stuck - no gravity change in {stuck_hours:g} hours"
@@ -633,7 +635,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         if temperature is not None:
             # Hot temperature during active fermentation is concerning
             if temperature > self.temperature_high_threshold:
-                await self._add_alert(
+                await self.async_add_alert(
                     session,
                     ALERT_TYPE_TEMPERATURE_HIGH,
                     f"Temperature too high: {temperature:.1f}°C"
@@ -643,7 +645,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 # Only alert if attenuation < 70% (early/mid fermentation)
                 # Cold crash at 70%+ attenuation is expected and normal
                 if session.attenuation is None or session.attenuation < 70.0:
-                    await self._add_alert(
+                    await self.async_add_alert(
                         session,
                         ALERT_TYPE_TEMPERATURE_LOW,
                         f"Temperature too low during fermentation: {temperature:.1f}°C"
@@ -652,7 +654,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         # Check for fermentation completion
         if (session.target_gravity and session.current_gravity and
             session.current_gravity <= session.target_gravity + 0.002):
-            await self._add_alert(
+            await self.async_add_alert(
                 session,
                 ALERT_TYPE_FERMENTATION_COMPLETE,
                 "Fermentation appears to be complete"
@@ -669,14 +671,14 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             # Only warn about low battery if it's been calibrated (prevents 0% startup warnings)
             if (session.battery_calibrated and
                 battery < self.low_battery_threshold):
-                await self._add_alert(
+                await self.async_add_alert(
                     session,
                     ALERT_TYPE_LOW_BATTERY,
                     f"Low battery: {battery}%"
                 )
 
-    async def _add_alert(self, session: BrewingSession, alert_type: str, message: str) -> None:
-        """Add an alert to the session."""
+    async def async_add_alert(self, session: BrewingSession, alert_type: str, message: str) -> None:
+        """Add an alert to the session, notifying and firing an event."""
         now = dt_util.now()
 
         if alert_type in ONCE_PER_SESSION_ALERTS:

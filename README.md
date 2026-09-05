@@ -15,6 +15,7 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 
 - **🍺 Session Monitoring**: Start/stop sessions with auto-detection of original gravity, plus browsable session history
 - **📊 Advanced Calculations**: Real-time ABV, attenuation, fermentation rate with scientifically accurate temperature correction
+- **🌡 Temperature Control**: Drive a heat belt and/or fermentation fridge from the wort temperature, with PWM heating tuned for low-wattage belts and compressor protection for fridges
 - **🔔 Smart Alerts**: Configurable stuck fermentation, temperature, completion and low-battery alerts — plus `rapt_brewing_alert` events for automations
 - **📡 Three Data Sources**: Direct Bluetooth, Home Assistant entities (BLE proxies), or the RAPT cloud API
 - **🔌 Offline Detection**: A connectivity sensor tells you when the Pill stops reporting instead of silently showing stale data
@@ -102,6 +103,78 @@ The integration uses scientifically accurate temperature correction based on res
 - **Formula**: `True_Density = Raw_Gravity - (Temperature - 20°C) × 0.00013`
 - **Result**: Temperature-corrected gravity shows actual fermentation state, not thermal artifacts
 
+## Temperature Control
+
+Configure under **Configure → Temperature control**. Pick the switch that
+powers your heat belt, your fermentation fridge, or both, and the integration
+adds a `climate` entity that holds the wort at the session's target
+temperature. Leave both outputs empty and no thermostat is created.
+
+The setpoint is the session's **Target Temperature**, so the climate card and
+the existing number entity always agree, and the setpoint follows the brew.
+
+### Heating: time-proportional, not on/off
+
+A typical fermenter heat belt is 25–50 W and warms the vessel wall, so the
+Pill floating in the wort sees a change 30–60 minutes later. Simple on/off
+control on that much lag overshoots and wanders, so heating uses a PWM duty
+cycle instead:
+
+```
+duty = (target - temperature + trim) / proportional_band
+```
+
+evaluated once per **cycle window** (default 15 minutes, so at most four
+switch operations an hour). A pure proportional loop settles below setpoint —
+holding 50% duty needs half the band as permanent error — so a slow integral
+**trim** (default 2 hours) removes that droop without fighting the fermenter's
+lag. Set the integral time to 0 to disable it.
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Proportional band | 1.0 °C | 100% duty this far below target; narrower = more aggressive |
+| Cycle window | 15 min | Pulses shorter than 60 s are rounded away |
+| Integral time | 2 h | How fast steady-state droop is trimmed out; 0 disables |
+
+If the duty sits at 100% for two hours with less than 0.2 °C of rise, a
+`heater_ineffective` alert fires — the belt is unplugged, or too small for
+the ambient temperature.
+
+### Cooling: hysteresis with compressor protection
+
+A fridge is never PWM'd. Cooling starts when the wort is above target plus the
+**deadband** and runs until it reaches target, subject to minimum on and off
+times.
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Deadband | 0.5 °C | How far above target before the fridge starts |
+| Minimum on | 3 min | Avoids very short compressor runs |
+| Minimum off | 5 min | Short-cycle protection — do not set this to 0 |
+
+### Safety
+
+Heating and cooling can never run together, and a **changeover deadtime**
+(default 10 minutes) stops them fighting across a swing. The heater also
+switches off when:
+
+- the wort exceeds target + **max overshoot** (default 2.0 °C)
+- the wort reaches the **absolute maximum** (default 30 °C) regardless of setpoint
+- the Pill goes offline or its readings go stale
+- no session is active, or the session is stopped
+- the integration is reloaded, removed, or the entity is deleted
+
+### Which mode?
+
+Set the climate entity's HVAC mode to `heat` (belt only), `cool` (fridge
+only), `heat_cool` (both), or `off`. The mode survives a restart; the outputs
+are re-read at startup and brought back in line on the first tick.
+
+> **Not using this integration's thermostat?** Home Assistant's built-in
+> `generic_thermostat` can drive a switch from any of the temperature sensors
+> here. It has no session awareness, no offline failsafe and no PWM heating,
+> but it is a fine minimal option.
+
 ## Alerts & Notifications
 
 ### Alert Types
@@ -111,6 +184,7 @@ All thresholds are configurable under **Configure → Alert thresholds** (defaul
 - **Temperature Low**: Below 10°C (50°F) during early/mid fermentation only (cold crash at 70%+ attenuation is expected)
 - **Fermentation Complete**: Target gravity reached (once per session)
 - **Low Battery**: Below 20% (only after battery calibration)
+- **Heater Ineffective**: Heating at 100% duty for 2 hours with no meaningful temperature rise (once per session; requires temperature control)
 
 Every alert also fires a `rapt_brewing_alert` event on the Home Assistant bus
 (`alert_type`, `message`, `session_id`, `session_name`, `entry_id`), so you can

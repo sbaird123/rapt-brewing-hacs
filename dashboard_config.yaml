@@ -46,6 +46,13 @@ cards:
             name: Target Temperature
         show_header_toggle: false
 
+  # Temperature control - only exists once a heater or cooler is configured
+  # under Configure -> Temperature control. Delete this card if you don't use it.
+  - type: thermostat
+    entity: climate.rapt_brewing_session_manager_fermentation_control
+    features:
+      - type: climate-hvac-modes
+
   # Second Row - Progress and device info
   - type: horizontal-stack
     cards:

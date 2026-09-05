@@ -58,6 +58,11 @@ masquerade as a stable fermentation.
 | `session` | select | Browse session history — switch which session the sensors display |
 | `session_name` | text | Rename the current session |
 | `target_gravity` / `original_gravity` / `target_temperature` | number | Session parameters (always SG / °C) |
+| `fermentation_control` | climate | Thermostat driving the heater/cooler switches — only created once an output is configured under **Configure → Temperature control** |
+
+The `fermentation_control` climate entity shares its setpoint with the
+`target_temperature` number, and exposes `heater_duty_cycle` and
+`control_reason` attributes for dashboards and troubleshooting.
 
 ## Services
 | Service | Description |

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-09-05
+
+### 🌡 **New: Temperature Control**
+- **New `climate` entity** that holds the wort at the session's target temperature by switching a heat belt and/or a fermentation fridge — configure the outputs under **Configure → Temperature control**. No outputs configured, no entity created
+- **Setpoint is the session's target temperature**, so the thermostat and the existing Target Temperature number stay in sync and the setpoint follows the brew
+- **Time-proportional heating** (PWM over a 15 minute window by default) instead of on/off, because a 25–50 W heat belt warms the vessel wall and the wort lags 30–60 minutes behind. A slow integral trim (default 2 h) removes the steady-state droop that proportional-only control leaves behind
+- **Compressor-safe cooling**: deadband hysteresis with minimum on/off times, never PWM'd, plus a changeover deadtime so heating and cooling can't fight
+- **Failsafes**: outputs switch off when the Pill goes offline, when no session is active, above target + max overshoot, above an absolute maximum temperature, and when the integration is reloaded or removed. The HVAC mode survives a restart; the outputs are re-read at startup and brought back in line on the first tick
+- **New `heater_ineffective` alert**: fires when the heater has run at 100% duty for two hours with no meaningful temperature rise — an unplugged or undersized belt
+- **Thermostat cards** added to both dashboard configurations
+
 ## [2.8.0] - 2026-06-12
 
 ### ☁️ **New: RAPT Cloud Data Source**

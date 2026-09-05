@@ -32,6 +32,17 @@ from .const import (
     CONF_GRAVITY_OFFSET,
     CONF_TEMPERATURE_OFFSET,
     CONF_GRAVITY_UNIT,
+    CONF_HEATER_SWITCH,
+    CONF_COOLER_SWITCH,
+    CONF_HEAT_PROPORTIONAL_BAND,
+    CONF_HEAT_CYCLE_MINUTES,
+    CONF_HEAT_INTEGRAL_HOURS,
+    CONF_COOL_DEADBAND,
+    CONF_COOL_MIN_ON_MINUTES,
+    CONF_COOL_MIN_OFF_MINUTES,
+    CONF_CHANGEOVER_MINUTES,
+    CONF_MAX_HEAT_OVERSHOOT,
+    CONF_ABSOLUTE_MAX_TEMPERATURE,
     GRAVITY_UNIT_SG,
     GRAVITY_UNIT_PLATO,
     SOURCE_TYPE_BLUETOOTH,
@@ -43,7 +54,19 @@ from .const import (
     DEFAULT_LOW_BATTERY_THRESHOLD,
     DEFAULT_OFFLINE_TIMEOUT_MINUTES,
     DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD,
+    DEFAULT_HEAT_PROPORTIONAL_BAND,
+    DEFAULT_HEAT_CYCLE_MINUTES,
+    DEFAULT_HEAT_INTEGRAL_HOURS,
+    DEFAULT_COOL_DEADBAND,
+    DEFAULT_COOL_MIN_ON_MINUTES,
+    DEFAULT_COOL_MIN_OFF_MINUTES,
+    DEFAULT_CHANGEOVER_MINUTES,
+    DEFAULT_MAX_HEAT_OVERSHOOT,
+    DEFAULT_ABSOLUTE_MAX_TEMPERATURE,
 )
+
+# Domains that can act as a heater or cooler output
+_OUTPUT_DOMAINS = ["switch", "input_boolean"]
 
 # BLE constants for discovery
 RAPT_MANUFACTURER_ID = 16722  # 0x4152 - "RA" from RAPT
@@ -551,7 +574,7 @@ class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Choose what to configure."""
-        menu = ["notifications", "alerts", "display"]
+        menu = ["notifications", "alerts", "temperature_control", "display"]
         if self.config_entry.data.get(CONF_SOURCE_TYPE) == SOURCE_TYPE_ENTITY:
             menu.append("entities")
         return self.async_show_menu(step_id="init", menu_options=menu)
@@ -653,6 +676,129 @@ class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
         )
 
         return self.async_show_form(step_id="alerts", data_schema=schema)
+
+    async def async_step_temperature_control(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure the heater/cooler outputs and control tuning."""
+        if user_input is not None:
+            # An unset entity selector is omitted entirely, so clear the
+            # stored value rather than leaving the previous output wired up.
+            merged = self._merged(user_input)
+            for key in (CONF_HEATER_SWITCH, CONF_COOLER_SWITCH):
+                if key not in user_input:
+                    merged.pop(key, None)
+            return self.async_create_entry(title="", data=merged)
+
+        options = self.config_entry.options
+
+        def _entity_default(key: str) -> Any:
+            return options.get(key) or vol.UNDEFINED
+
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_HEATER_SWITCH, default=_entity_default(CONF_HEATER_SWITCH)
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain=_OUTPUT_DOMAINS)
+                ),
+                vol.Optional(
+                    CONF_COOLER_SWITCH, default=_entity_default(CONF_COOLER_SWITCH)
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain=_OUTPUT_DOMAINS)
+                ),
+                vol.Required(
+                    CONF_HEAT_PROPORTIONAL_BAND,
+                    default=options.get(
+                        CONF_HEAT_PROPORTIONAL_BAND, DEFAULT_HEAT_PROPORTIONAL_BAND
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0.2, max=10, step=0.1, unit_of_measurement="°C",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_HEAT_CYCLE_MINUTES,
+    CONF_HEAT_INTEGRAL_HOURS,
+                    default=options.get(CONF_HEAT_CYCLE_MINUTES, DEFAULT_HEAT_CYCLE_MINUTES),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=2, max=60, step=1, unit_of_measurement="min",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_HEAT_INTEGRAL_HOURS,
+                    default=options.get(
+                        CONF_HEAT_INTEGRAL_HOURS, DEFAULT_HEAT_INTEGRAL_HOURS
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, max=24, step=0.5, unit_of_measurement="h",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_COOL_DEADBAND,
+                    default=options.get(CONF_COOL_DEADBAND, DEFAULT_COOL_DEADBAND),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0.1, max=5, step=0.1, unit_of_measurement="°C",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_COOL_MIN_ON_MINUTES,
+                    default=options.get(CONF_COOL_MIN_ON_MINUTES, DEFAULT_COOL_MIN_ON_MINUTES),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, max=60, step=1, unit_of_measurement="min",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_COOL_MIN_OFF_MINUTES,
+                    default=options.get(CONF_COOL_MIN_OFF_MINUTES, DEFAULT_COOL_MIN_OFF_MINUTES),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, max=60, step=1, unit_of_measurement="min",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_CHANGEOVER_MINUTES,
+                    default=options.get(CONF_CHANGEOVER_MINUTES, DEFAULT_CHANGEOVER_MINUTES),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, max=120, step=1, unit_of_measurement="min",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_MAX_HEAT_OVERSHOOT,
+                    default=options.get(CONF_MAX_HEAT_OVERSHOOT, DEFAULT_MAX_HEAT_OVERSHOOT),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0.1, max=10, step=0.1, unit_of_measurement="°C",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_ABSOLUTE_MAX_TEMPERATURE,
+                    default=options.get(
+                        CONF_ABSOLUTE_MAX_TEMPERATURE, DEFAULT_ABSOLUTE_MAX_TEMPERATURE
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=5, max=45, step=0.5, unit_of_measurement="°C",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(step_id="temperature_control", data_schema=schema)
 
     async def async_step_display(
         self, user_input: dict[str, Any] | None = None
