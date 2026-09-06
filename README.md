@@ -166,9 +166,11 @@ switches off when:
 
 ### Which mode?
 
-Set the climate entity's HVAC mode to `heat` (belt only), `cool` (fridge
-only), `heat_cool` (both), or `off`. The mode survives a restart; the outputs
-are re-read at startup and brought back in line on the first tick.
+A new thermostat starts in the mode its outputs imply — `heat` with only a
+belt, `cool` with only a fridge, `heat_cool` with both — so configuring an
+output is all it takes to start controlling. Switch it to `off` (or pick a
+different mode) on the card at any time; your choice survives a restart, and
+the outputs are re-read at startup and brought back in line on the first tick.
 
 > **Not using this integration's thermostat?** Home Assistant's built-in
 > `generic_thermostat` can drive a switch from any of the temperature sensors

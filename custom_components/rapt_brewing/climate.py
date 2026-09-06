@@ -111,10 +111,22 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
         self._heater_entity_id = heater_entity_id
         self._cooler_entity_id = cooler_entity_id
         self._controller = FermentationController(config_from_options(dict(entry.options)))
-        self._attr_hvac_mode = HVACMode.OFF
+        self._attr_hvac_mode = self._default_hvac_mode()
         # The timer tick and coordinator updates can land together; the
         # control law must not be evaluated twice at once.
         self._control_lock = asyncio.Lock()
+
+    def _default_hvac_mode(self) -> HVACMode:
+        """Start in the mode the configured outputs imply.
+
+        Choosing the heater or cooler switch is the opt-in; leaving a
+        configured thermostat sitting in `off` just looks broken.
+        """
+        if self._heater_entity_id and self._cooler_entity_id:
+            return HVACMode.HEAT_COOL
+        if self._cooler_entity_id:
+            return HVACMode.COOL
+        return HVACMode.HEAT
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
@@ -174,6 +186,7 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
         """Restore the mode and start the control loop."""
         await super().async_added_to_hass()
 
+        # A previously chosen mode wins - including a deliberate `off`.
         last_state = await self.async_get_last_state()
         if last_state and last_state.state in self.hvac_modes:
             self._attr_hvac_mode = HVACMode(last_state.state)

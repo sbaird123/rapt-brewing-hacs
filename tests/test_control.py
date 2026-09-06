@@ -43,7 +43,7 @@ def test_off_mode_keeps_everything_off():
     controller = _heater_controller()
     decision = controller.tick(START, temperature=15.0, target=20.0, mode=MODE_OFF)
     assert (decision.heater, decision.cooler) == (False, False)
-    assert decision.reason == "off"
+    assert decision.reason == "thermostat off"
 
 
 def test_hold_off_reason_wins_over_demand():

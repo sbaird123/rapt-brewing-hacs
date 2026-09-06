@@ -102,7 +102,7 @@ class FermentationController:
             if hold_off_reason:
                 reason = hold_off_reason
             elif mode == MODE_OFF:
-                reason = "off"
+                reason = "thermostat off"
             elif temperature is None:
                 reason = "no temperature reading"
             else:

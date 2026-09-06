@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2026-09-05
+
+### 🔧 **Fixes**
+- **The thermostat now starts in the mode its outputs imply** (`heat` with only a heater, `cool` with only a cooler, `heat_cool` with both) instead of `off`. Configuring an output is the opt-in — a freshly configured thermostat sitting idle in `off` with no explanation just looked broken. An explicitly chosen mode, including `off`, still survives restarts
+- **Clearer status**: the `control_reason` attribute now reads `thermostat off` rather than the ambiguous `off`
+
 ## [2.9.0] - 2026-09-05
 
 ### 🌡 **New: Temperature Control**
