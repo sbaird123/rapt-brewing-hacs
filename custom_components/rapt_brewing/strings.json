@@ -38,7 +38,7 @@
       },
       "cloud": {
         "title": "RAPT Cloud",
-        "description": "Sign in with your RAPT portal account. Create an API secret under Account → API Secrets at app.rapt.io.",
+        "description": "Sign in with your legacy RAPT portal account. Create an API secret under Account → API Secrets at app.rapt.io. Pills on firmware 2.0 or later no longer report here, and RAPT shuts the legacy portal down after 31 December 2026; use a Brew Stream instead.",
         "data": {
           "api_email": "RAPT account email",
           "api_secret": "API secret"
@@ -49,6 +49,13 @@
         "description": "Found {devices_count} hydrometer(s) on your RAPT account.",
         "data": {
           "hydrometer_id": "Hydrometer"
+        }
+      },
+      "webhook": {
+        "title": "RAPT Brew Stream",
+        "description": "Pills on firmware 2.0 or later report to the RAPT Brew platform, which pushes readings through a Brew Stream. In the RAPT Brew app, create a Brew Stream for this Pill and set its URL to:\n\n`{webhook_url}`\n\nRAPT's servers must be able to reach this address, so it needs to be your external Home Assistant URL (or Home Assistant Cloud). Readings appear when the Pill next reports.",
+        "data": {
+          "name": "Name"
         }
       },
       "reconfigure_bluetooth": {
@@ -75,6 +82,10 @@
           "api_email": "RAPT account email",
           "api_secret": "API secret"
         }
+      },
+      "reconfigure_webhook": {
+        "title": "RAPT Brew Stream",
+        "description": "Set the URL of this Pill's Brew Stream in the RAPT Brew app to:\n\n`{webhook_url}`"
       }
     },
     "error": {
@@ -86,7 +97,8 @@
     },
     "abort": {
       "already_configured": "Device is already configured",
-      "reconfigure_successful": "Reconfiguration successful"
+      "reconfigure_successful": "Reconfiguration successful",
+      "no_url_available": "Home Assistant has no URL that RAPT's servers can reach. Set an external URL under Settings → System → Network, or enable Home Assistant Cloud remote access."
     }
   },
   "options": {

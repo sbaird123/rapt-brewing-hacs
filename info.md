@@ -7,7 +7,7 @@ A comprehensive Home Assistant integration for managing brewing sessions with RA
 🍺 **Complete Brewing Session Management**
 - Start, stop, and delete brewing sessions
 - Track multiple sessions and browse session history
-- Three data sources: direct Bluetooth, HA entities (BLE proxies), or the RAPT cloud API
+- Four data sources: direct Bluetooth, HA entities (BLE proxies), a RAPT Brew Stream webhook, or the legacy RAPT cloud API
 
 📊 **Advanced Calculations**
 - Automatic ABV percentage calculation

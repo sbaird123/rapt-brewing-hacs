@@ -1,6 +1,7 @@
 """Tests for the RAPT Pill BLE advertisement parser."""
 from __future__ import annotations
 
+import logging
 import struct
 
 import pytest
@@ -109,6 +110,16 @@ def test_unknown_version_rejected():
     packet = b"PT" + bytes([9]) + bytes(20)
     parser = RAPTPillBLEParser()
     assert parser.parse_advertisement(FakeServiceInfo({RAPT_MANUFACTURER_ID: packet})) is None
+
+
+def test_firmware_2_auxiliary_frame_ignored_quietly(caplog):
+    # Captured from Pill firmware 2.0.0, which sends this 24-byte frame
+    # alongside its normal v1/v2 telemetry (via Jocke1970/rapt-ble#7)
+    packet = bytes.fromhex("5054b78813bfc469f801ffffffff8000ffff010602000009")
+    parser = RAPTPillBLEParser()
+
+    assert parser.parse_advertisement(FakeServiceInfo({RAPT_MANUFACTURER_ID: packet})) is None
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
 
 
 def test_device_data_tracks_freshness():

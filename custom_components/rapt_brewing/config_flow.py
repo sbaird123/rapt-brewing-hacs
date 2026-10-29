@@ -7,10 +7,12 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.const import CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import selector
+from homeassistant.helpers.network import NoURLAvailableError
 
 from .const import (
     DOMAIN,
@@ -24,6 +26,7 @@ from .const import (
     CONF_API_EMAIL,
     CONF_API_SECRET,
     CONF_HYDROMETER_ID,
+    CONF_WEBHOOK_ID,
     CONF_STUCK_FERMENTATION_HOURS,
     CONF_TEMPERATURE_HIGH_THRESHOLD,
     CONF_TEMPERATURE_LOW_THRESHOLD,
@@ -48,6 +51,7 @@ from .const import (
     SOURCE_TYPE_BLUETOOTH,
     SOURCE_TYPE_ENTITY,
     SOURCE_TYPE_CLOUD,
+    SOURCE_TYPE_WEBHOOK,
     DEFAULT_STUCK_FERMENTATION_HOURS,
     DEFAULT_TEMPERATURE_HIGH_THRESHOLD,
     DEFAULT_TEMPERATURE_LOW_THRESHOLD,
@@ -82,7 +86,8 @@ SOURCE_TYPE_SCHEMA = vol.Schema(
             {
                 SOURCE_TYPE_BLUETOOTH: "Direct Bluetooth",
                 SOURCE_TYPE_ENTITY: "Home Assistant entities (e.g. Shelly BLE proxy)",
-                SOURCE_TYPE_CLOUD: "RAPT cloud (api.rapt.io)",
+                SOURCE_TYPE_WEBHOOK: "RAPT Brew Stream (webhook, Pill firmware 2.0+)",
+                SOURCE_TYPE_CLOUD: "RAPT legacy cloud (api.rapt.io, until 31 Dec 2026)",
             }
         )
     }
@@ -190,6 +195,7 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._discovery_info: Any = None
         self._cloud_credentials: dict[str, str] = {}
         self._cloud_hydrometers: list[dict[str, Any]] = []
+        self._webhook_id: str | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -200,6 +206,8 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_entity()
             if user_input[CONF_SOURCE_TYPE] == SOURCE_TYPE_CLOUD:
                 return await self.async_step_cloud()
+            if user_input[CONF_SOURCE_TYPE] == SOURCE_TYPE_WEBHOOK:
+                return await self.async_step_webhook()
             return await self.async_step_bluetooth_select()
 
         return self.async_show_form(
@@ -394,6 +402,41 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     # ------------------------------------------------------------------
+    # Brew Stream (webhook) source
+    # ------------------------------------------------------------------
+
+    async def async_step_webhook(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a RAPT Brew Stream source: show the URL to paste into RAPT."""
+        from homeassistant.components import webhook
+
+        if self._webhook_id is None:
+            self._webhook_id = webhook.async_generate_id()
+
+        if user_input is not None:
+            return self.async_create_entry(
+                title=user_input[CONF_NAME].strip() or "RAPT Pill",
+                data={
+                    CONF_SOURCE_TYPE: SOURCE_TYPE_WEBHOOK,
+                    CONF_WEBHOOK_ID: self._webhook_id,
+                },
+            )
+
+        try:
+            webhook_url = webhook.async_generate_url(
+                self.hass, self._webhook_id, allow_internal=False
+            )
+        except NoURLAvailableError:
+            return self.async_abort(reason="no_url_available")
+
+        return self.async_show_form(
+            step_id="webhook",
+            data_schema=vol.Schema({vol.Required(CONF_NAME, default="RAPT Pill"): cv.string}),
+            description_placeholders={"webhook_url": webhook_url},
+        )
+
+    # ------------------------------------------------------------------
     # Reconfigure
     # ------------------------------------------------------------------
 
@@ -407,6 +450,8 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_reconfigure_entity()
         if source_type == SOURCE_TYPE_CLOUD:
             return await self.async_step_reconfigure_cloud()
+        if source_type == SOURCE_TYPE_WEBHOOK:
+            return await self.async_step_reconfigure_webhook()
         return await self.async_step_reconfigure_bluetooth()
 
     def _reconfigure_entry(self) -> config_entries.ConfigEntry:
@@ -500,6 +545,28 @@ class RAPTBrewingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="reconfigure_cloud",
             data_schema=_cloud_credentials_schema(dict(entry.data)),
             errors=errors,
+        )
+
+    async def async_step_reconfigure_webhook(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Show the Brew Stream webhook URL of an existing entry again."""
+        from homeassistant.components import webhook
+
+        if user_input is not None:
+            return self.async_abort(reason="reconfigure_successful")
+
+        entry = self._reconfigure_entry()
+        try:
+            webhook_url = webhook.async_generate_url(
+                self.hass, entry.data[CONF_WEBHOOK_ID], allow_internal=False
+            )
+        except NoURLAvailableError:
+            return self.async_abort(reason="no_url_available")
+
+        return self.async_show_form(
+            step_id="reconfigure_webhook",
+            description_placeholders={"webhook_url": webhook_url},
         )
 
     # ------------------------------------------------------------------
@@ -613,7 +680,7 @@ class RAPTBrewingOptionsFlow(config_entries.OptionsFlow):
         options = self.config_entry.options
         offline_default = (
             DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD
-            if self.config_entry.data.get(CONF_SOURCE_TYPE) == SOURCE_TYPE_CLOUD
+            if self.config_entry.data.get(CONF_SOURCE_TYPE) in (SOURCE_TYPE_CLOUD, SOURCE_TYPE_WEBHOOK)
             else DEFAULT_OFFLINE_TIMEOUT_MINUTES
         )
 

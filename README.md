@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/sbaird123/rapt-brewing-hacs?style=for-the-badge)](LICENSE)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydrometers — via direct Bluetooth, existing Home Assistant entities (e.g. a Shelly BLE proxy), or the RAPT cloud API.
+A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydrometers — via direct Bluetooth, existing Home Assistant entities (e.g. a Shelly BLE proxy), a RAPT Brew Stream webhook, or the legacy RAPT cloud API.
 
 ![RAPT Brewing Dashboard](docs/dashboard-screenshot.png)
 
@@ -17,7 +17,7 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 - **📊 Advanced Calculations**: Real-time ABV, attenuation, fermentation rate with scientifically accurate temperature correction
 - **🌡 Temperature Control**: Drive a heat belt and/or fermentation fridge from the wort temperature, with PWM heating tuned for low-wattage belts and compressor protection for fridges
 - **🔔 Smart Alerts**: Configurable stuck fermentation, temperature, completion and low-battery alerts — plus `rapt_brewing_alert` events for automations
-- **📡 Three Data Sources**: Direct Bluetooth, Home Assistant entities (BLE proxies), or the RAPT cloud API
+- **📡 Four Data Sources**: Direct Bluetooth, Home Assistant entities (BLE proxies), a RAPT Brew Stream webhook, or the legacy RAPT cloud API
 - **🔌 Offline Detection**: A connectivity sensor tells you when the Pill stops reporting instead of silently showing stale data
 - **🛠 Calibration & Units**: Per-device gravity/temperature offsets and SG or °Plato display
 - **🤖 Services**: `start_session`, `stop_session`, and `add_session_note` for scripts and automations
@@ -37,15 +37,18 @@ A Home Assistant integration for monitoring brewing sessions with RAPT Pill hydr
 
 ## Configuration
 
-**Requirements:** Home Assistant 2024.6.0+, RAPT Pill device
+**Requirements:** Home Assistant 2024.12.0+, RAPT Pill device
 
 **Setup:** Settings → Devices & Services → Add Integration → Search "RAPT Brewing Session Manager", then pick a data source:
 
 - **Direct Bluetooth** — your HA server (or an ESPHome Bluetooth proxy) hears the Pill directly. Discovered Pills are offered automatically; you can also enter the address manually.
 - **Home Assistant entities** — point the integration at existing gravity/temperature/battery sensors (e.g. created by a Shelly BLE gateway).
-- **RAPT cloud** — sign in with your RAPT portal email and an API secret (create one at app.rapt.io under Account → API Secrets) and pick your hydrometer. Useful when the Pill is out of Bluetooth range entirely.
+- **RAPT Brew Stream** — for Pills on firmware 2.0 or later when the Pill is out of Bluetooth range. Setup shows a webhook URL; in the RAPT Brew app, create a Brew Stream for the Pill and paste the URL in. RAPT's servers must be able to reach Home Assistant, so you need an external URL or Home Assistant Cloud. Reconfigure shows the URL again.
+- **RAPT legacy cloud** — sign in with your legacy RAPT portal email and an API secret (create one at app.rapt.io under Account → API Secrets) and pick your hydrometer. Only Pills still on firmware 1.x report here, and RAPT shuts the legacy portal down after 31 December 2026, so prefer a Brew Stream.
 
-After setup, **Configure** offers Notifications, Alert thresholds (including the offline timeout), Display & calibration (SG/°Plato, gravity/temperature offsets), and source entity changes. The **Reconfigure** menu item lets you change the Bluetooth address, source entities, or cloud credentials without losing history.
+> **RAPT Pill firmware 2.0:** from 1 October 2026 Pills update to firmware 2.0, which moves them to the new RAPT Brew platform (brew.rapt.io). Direct Bluetooth keeps working (Bluetooth telemetry is now enabled in the RAPT Brew app rather than the captive portal), but updated Pills stop reporting to the legacy cloud API. Switch legacy cloud entries to a Brew Stream.
+
+After setup, **Configure** offers Notifications, Alert thresholds (including the offline timeout), Display & calibration (SG/°Plato, gravity/temperature offsets), and source entity changes. The **Reconfigure** menu item lets you change the Bluetooth address, source entities, or cloud credentials, or see the Brew Stream URL again, without losing history.
 
 ## Usage
 

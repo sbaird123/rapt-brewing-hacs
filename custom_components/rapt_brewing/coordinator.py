@@ -4,8 +4,10 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 import homeassistant.util.dt as dt_util
+from http import HTTPStatus
 from typing import Any
 
+from aiohttp import web
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, Event, EventStateChangedData, callback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -27,6 +29,7 @@ from .const import (
     CONF_API_EMAIL,
     CONF_API_SECRET,
     CONF_HYDROMETER_ID,
+    CONF_WEBHOOK_ID,
     CONF_STUCK_FERMENTATION_HOURS,
     CONF_TEMPERATURE_HIGH_THRESHOLD,
     CONF_TEMPERATURE_LOW_THRESHOLD,
@@ -39,6 +42,7 @@ from .const import (
     SOURCE_TYPE_BLUETOOTH,
     SOURCE_TYPE_ENTITY,
     SOURCE_TYPE_CLOUD,
+    SOURCE_TYPE_WEBHOOK,
     SESSION_STATE_ACTIVE,
     SESSION_STATE_IDLE,
     ALERT_TYPE_STUCK_FERMENTATION,
@@ -94,6 +98,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=DOMAIN,
             update_interval=timedelta(seconds=scan_interval),
         )
@@ -107,6 +112,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             self._rapt_device_id = self._rapt_device_id.upper()
         self._ble_cancel_callback = None
         self._entity_cancel_callback = None
+        self._webhook_cancel_callback = None
+        self._webhook_received_at: datetime | None = None
         self._signal_strength: int | None = None
         self.ble_device_data = None
         self._cloud_client = None
@@ -121,6 +128,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
             self._setup_entity_source()
         elif self.source_type == SOURCE_TYPE_CLOUD:
             self._setup_cloud_source()
+        elif self.source_type == SOURCE_TYPE_WEBHOOK:
+            self._setup_webhook_source()
         else:
             self._setup_bluetooth_source(hass)
 
@@ -157,7 +166,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         """How long without fresh data before the device is considered offline."""
         default = (
             DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD
-            if self.source_type == SOURCE_TYPE_CLOUD
+            if self.source_type in (SOURCE_TYPE_CLOUD, SOURCE_TYPE_WEBHOOK)
             else DEFAULT_OFFLINE_TIMEOUT_MINUTES
         )
         return timedelta(minutes=float(self._opt(CONF_OFFLINE_TIMEOUT_MINUTES, default)))
@@ -248,6 +257,49 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         )
         _LOGGER.debug("RAPT COORDINATOR: Cloud source configured for hydrometer %s",
                       self.entry.data.get(CONF_HYDROMETER_ID))
+
+    def _setup_webhook_source(self) -> None:
+        """Wire up RAPT Brew Stream (webhook push) data ingestion."""
+        from homeassistant.components import webhook
+
+        webhook_id = self.entry.data[CONF_WEBHOOK_ID]
+        webhook.async_register(
+            self.hass, DOMAIN, self.entry.title, webhook_id,
+            self._async_handle_webhook, allowed_methods=["POST"],
+        )
+        self._webhook_cancel_callback = lambda: webhook.async_unregister(self.hass, webhook_id)
+        _LOGGER.debug("RAPT COORDINATOR: Brew Stream webhook registered for %s", self.entry.title)
+
+    async def _async_handle_webhook(
+        self, hass: HomeAssistant, webhook_id: str, request: web.Request
+    ) -> web.Response:
+        """Ingest a reading pushed by a RAPT Brew Stream."""
+        from .ble_device import RAPTPillSensorData
+        from .brew_stream import parse_brew_stream_payload
+
+        try:
+            payload = await request.json()
+        except ValueError:
+            _LOGGER.warning("RAPT WEBHOOK: Received a body that is not JSON")
+            return web.Response(status=HTTPStatus.BAD_REQUEST)
+
+        reading = parse_brew_stream_payload(payload)
+        if reading is None:
+            # Acknowledge so RAPT doesn't retry non-telemetry events
+            _LOGGER.debug("RAPT WEBHOOK: Ignoring payload without telemetry: %s", payload)
+            return web.Response(status=HTTPStatus.OK)
+
+        _LOGGER.debug("RAPT WEBHOOK: Received %s", reading)
+        self._current_ble_data = RAPTPillSensorData(
+            temperature=reading["temperature"],
+            gravity=reading["gravity"],
+            battery=reading["battery"],
+            signal_strength=reading["signal_strength"],
+        )
+        self._signal_strength = reading["signal_strength"]
+        self._webhook_received_at = dt_util.utcnow()
+        await self.async_request_refresh()
+        return web.Response(status=HTTPStatus.OK)
 
     def _refresh_from_entities(self) -> None:
         """Build sensor data from the configured HA entities."""
@@ -378,6 +430,14 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 has_new_data = self._current_ble_data is not None
             elif self.source_type == SOURCE_TYPE_CLOUD:
                 has_new_data = await self._refresh_from_cloud()
+            elif self.source_type == SOURCE_TYPE_WEBHOOK:
+                # Readings arrive via _async_handle_webhook; only ingest each once
+                has_new_data = (
+                    self._webhook_received_at is not None
+                    and self._webhook_received_at != self._last_ingested_at
+                )
+                if has_new_data:
+                    self._last_ingested_at = self._webhook_received_at
             else:
                 self._current_ble_data = self.ble_device_data.get_last_sensor_data()
                 # Only treat the reading as new if a fresh advertisement was
@@ -426,7 +486,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
 
     def get_ble_signal_strength(self) -> int | None:
         """Get BLE signal strength."""
-        if self.source_type in (SOURCE_TYPE_ENTITY, SOURCE_TYPE_CLOUD):
+        if self.source_type in (SOURCE_TYPE_ENTITY, SOURCE_TYPE_CLOUD, SOURCE_TYPE_WEBHOOK):
             return self._signal_strength
         service_info = self.ble_device_data.get_last_service_info()
         return service_info.rssi if service_info else None
@@ -928,6 +988,9 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         if self._entity_cancel_callback:
             self._entity_cancel_callback()
             self._entity_cancel_callback = None
+        if self._webhook_cancel_callback:
+            self._webhook_cancel_callback()
+            self._webhook_cancel_callback = None
         await super().async_shutdown()
 
     @staticmethod

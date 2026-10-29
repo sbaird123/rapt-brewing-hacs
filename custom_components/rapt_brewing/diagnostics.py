@@ -7,13 +7,19 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_API_EMAIL, CONF_API_SECRET, CONF_RAPT_DEVICE_ID, CONF_HYDROMETER_ID
+from .const import (
+    CONF_API_EMAIL,
+    CONF_API_SECRET,
+    CONF_HYDROMETER_ID,
+    CONF_RAPT_DEVICE_ID,
+    CONF_WEBHOOK_ID,
+)
 
 if TYPE_CHECKING:
     from .coordinator import RAPTBrewingCoordinator
     from .data import BrewingSession
 
-TO_REDACT = {CONF_RAPT_DEVICE_ID, CONF_API_EMAIL, CONF_API_SECRET, CONF_HYDROMETER_ID}
+TO_REDACT = {CONF_RAPT_DEVICE_ID, CONF_API_EMAIL, CONF_API_SECRET, CONF_HYDROMETER_ID, CONF_WEBHOOK_ID}
 
 
 def _session_summary(session: BrewingSession) -> dict[str, Any]:

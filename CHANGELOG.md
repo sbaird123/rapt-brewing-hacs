@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-10-30
+
+### 📡 **New: RAPT Pill Firmware 2.0 Support**
+- **New RAPT Brew Stream data source**: Pills on firmware 2.0 or later report to the new RAPT Brew platform (brew.rapt.io), which has no polling API. Setup now gives you a webhook URL to paste into a Brew Stream in the RAPT Brew app, and readings are pushed to Home Assistant as the Pill reports. Accepts gravity in SG or points and temperature in °C or °F. Reconfigure shows the URL again
+- **Quiet Bluetooth logs on firmware 2.0**: the new firmware sends an extra undocumented 24-byte `PT` frame alongside its normal telemetry. It used to log two warnings every time it arrived; it is now ignored at debug level. Normal telemetry parsing is unchanged
+
+### 🔧 **Fixes**
+- **The coordinator passes its config entry to Home Assistant explicitly** rather than relying on the ContextVar lookup HA reports as deprecated
+- **Minimum Home Assistant version corrected to 2024.12.0**: the options flow has needed it since 2.8.0, so the README's 2024.6.0 was wrong. HACS now enforces it
+
+### ⚠️ **Deprecation**
+- **The RAPT cloud source is now labelled legacy**: Pills updated to firmware 2.0 stop reporting to api.rapt.io, and RAPT shuts the legacy portal down after 31 December 2026. Move cloud entries to a Brew Stream
+
 ## [2.9.1] - 2026-09-05
 
 ### 🔧 **Fixes**

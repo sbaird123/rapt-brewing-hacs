@@ -62,6 +62,7 @@ CONF_SIGNAL_ENTITY: Final = "signal_entity"
 CONF_API_EMAIL: Final = "api_email"
 CONF_API_SECRET: Final = "api_secret"
 CONF_HYDROMETER_ID: Final = "hydrometer_id"
+CONF_WEBHOOK_ID: Final = "webhook_id"
 
 # Option keys (configurable alert thresholds, calibration and display)
 CONF_STUCK_FERMENTATION_HOURS: Final = "stuck_fermentation_hours"
@@ -90,6 +91,7 @@ CONF_ABSOLUTE_MAX_TEMPERATURE: Final = "absolute_max_temperature"
 SOURCE_TYPE_BLUETOOTH: Final = "bluetooth"
 SOURCE_TYPE_ENTITY: Final = "entity"
 SOURCE_TYPE_CLOUD: Final = "cloud"
+SOURCE_TYPE_WEBHOOK: Final = "webhook"
 
 # Gravity display units
 GRAVITY_UNIT_SG: Final = "sg"
@@ -107,7 +109,7 @@ DEFAULT_TEMPERATURE_HIGH_THRESHOLD: Final = 30.0  # Celsius
 DEFAULT_TEMPERATURE_LOW_THRESHOLD: Final = 10.0  # Celsius
 DEFAULT_LOW_BATTERY_THRESHOLD: Final = 20  # Percentage
 DEFAULT_OFFLINE_TIMEOUT_MINUTES: Final = 15  # Direct Bluetooth / entity sources
-DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD: Final = 120  # Pills report to the cloud much less often
+DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD: Final = 120  # Pills report to the cloud (and Brew Streams) much less often
 
 # Default temperature control tuning
 # A fermenter heat belt is low wattage and heats the vessel wall, so the wort

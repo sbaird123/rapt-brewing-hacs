@@ -25,6 +25,9 @@ KEGLAND_DATA_START = [71]   # "G" - General/Version
 
 # Telemetry payload after the "PT" prefix: version byte + 20 data bytes
 TELEMETRY_PAYLOAD_LENGTH = 21
+# Firmware 2.0.0+ also sends an undocumented "PT"-prefixed frame one byte
+# longer than telemetry; it carries no readings we know how to decode.
+AUXILIARY_FRAME_LENGTH = 24
 V1_STRUCT = ">B6sHfhhhh"   # version + MAC + temp + gravity + accel xyz + battery
 V2_STRUCT = ">BBBfHfhhhh"  # version + reserved + velocity_valid + velocity + temp + gravity + accel xyz + battery
 
@@ -101,7 +104,9 @@ class RAPTPillBLEParser:
         if RAPT_MANUFACTURER_ID in manufacturer_data:
             data = manufacturer_data[RAPT_MANUFACTURER_ID]
             _LOGGER.debug("RAPT PARSER: RAPT data length=%d, hex=%s", len(data), data.hex())
-            if len(data) >= 2 and list(data[:2]) == RAPT_DATA_START:
+            if len(data) == AUXILIARY_FRAME_LENGTH and list(data[:2]) == RAPT_DATA_START:
+                _LOGGER.debug("RAPT PARSER: Ignoring firmware 2.0 auxiliary frame: %s", data.hex())
+            elif len(data) >= 2 and list(data[:2]) == RAPT_DATA_START:
                 parsed_data = self._parse_telemetry(data)
                 if parsed_data:
                     parsed_data.firmware_version = self._firmware_version
