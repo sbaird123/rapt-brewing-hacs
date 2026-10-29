@@ -122,6 +122,15 @@ def test_firmware_2_auxiliary_frame_ignored_quietly(caplog):
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
 
 
+def test_identification_frame_ignored_quietly(caplog):
+    # "RAPTdPillG1" with "RA" consumed as the manufacturer ID
+    packet = bytes.fromhex("50546450696c6c4731")
+    parser = RAPTPillBLEParser()
+
+    assert parser.parse_advertisement(FakeServiceInfo({RAPT_MANUFACTURER_ID: packet})) is None
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
 def test_device_data_tracks_freshness():
     device = RAPTPillBluetoothDeviceData("RAPT Pill TEST")
     assert device.last_telemetry_at is None

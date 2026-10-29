@@ -10,6 +10,7 @@ from typing import Any
 from aiohttp import web
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, Event, EventStateChangedData, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -69,6 +70,8 @@ from .const import (
 from .data import RAPTBrewingData, BrewingSession, DataPoint, Alert, downsample_data_points
 
 _LOGGER = logging.getLogger(__name__)
+
+LEGACY_DEVICE_SW_VERSION = "1.0.0"
 
 STORAGE_VERSION = 1
 LEGACY_STORAGE_KEY = "rapt_brewing_sessions"
@@ -473,12 +476,32 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                     # Save data to storage (delayed, to limit disk writes)
                     self._schedule_save()
 
+            self._sync_device_firmware()
             return self.data
 
         except UpdateFailed:
             raise
         except Exception as err:
             raise UpdateFailed(f"Error updating RAPT brewing data: {err}") from err
+
+    def _sync_device_firmware(self) -> None:
+        """Show the Pill's firmware (only known over Bluetooth) on the device card."""
+        registry = dr.async_get(self.hass)
+        device = next(
+            (
+                d for d in dr.async_entries_for_config_entry(registry, self.entry.entry_id)
+                if (DOMAIN, self.entry.entry_id) in d.identifiers
+            ),
+            None,
+        )
+        if device is None:
+            return
+        firmware = getattr(self._current_ble_data, "firmware_version", None)
+        # Before 2.7.0 the integration hard-coded its own version here
+        if firmware is None and device.sw_version == LEGACY_DEVICE_SW_VERSION:
+            registry.async_update_device(device.id, sw_version=None)
+        elif firmware is not None and firmware != device.sw_version:
+            registry.async_update_device(device.id, sw_version=firmware)
 
     def get_current_ble_data(self) -> Any:
         """Get current BLE sensor data."""

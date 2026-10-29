@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.1] - 2026-10-30
+
+### 🔧 **Fixes**
+- **No more warnings for the Pill's identification advert**: the Pill occasionally broadcasts `RAPTdPillG1`, which starts like telemetry and was logged as a too-short payload and a parse failure. It is now ignored at debug level
+- **The device card shows the Pill's real firmware**: it was stuck on `1.0.0`, a placeholder for the integration's own version that 2.7.0 stopped setting but Home Assistant kept. It now shows the firmware the Pill broadcasts with the direct Bluetooth source. For the entity, webhook and cloud sources, which don't report firmware, the stale placeholder is cleared
+- **Ready for Home Assistant 2027.8**: device lookups no longer use `async_get_device`, which HA deprecates and removes in 2027.8
+
 ## [2.10.0] - 2026-10-30
 
 ### 📡 **New: RAPT Pill Firmware 2.0 Support**

@@ -102,10 +102,14 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
 
         dev_reg = dr.async_get(hass)
-        legacy_device = dev_reg.async_get_device(
-            identifiers={(DOMAIN, "rapt_brewing")}
+        legacy_device = next(
+            (
+                d for d in dr.async_entries_for_config_entry(dev_reg, entry.entry_id)
+                if (DOMAIN, "rapt_brewing") in d.identifiers
+            ),
+            None,
         )
-        if legacy_device and entry.entry_id in legacy_device.config_entries:
+        if legacy_device:
             _LOGGER.info(
                 "Migrating device identifier (%s, rapt_brewing) → (%s, %s)",
                 DOMAIN, DOMAIN, entry.entry_id,
