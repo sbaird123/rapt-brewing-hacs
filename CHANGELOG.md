@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.2] - 2026-10-31
+
+### 📡 **More readings from firmware 2.0 Pills**
+- **The firmware 2.0 frame is now decoded**: the extra 24-byte `PT` frame that 2.10.0 started ignoring turns out to carry gravity and temperature. Over Bluetooth these readings are now used too, so fewer readings go missing. Frames the Pill sends without a reading are still ignored quietly. The frame has no battery, velocity or accelerometer data, so those keep the values from the Pill's last older-format frame
+
+### 🔧 **Fixes**
+- **The Pill no longer flaps offline over Bluetooth**: a Pill in a fermenter regularly goes 20-30 minutes without a packet getting through, which tripped the 15 minute offline timeout about a dozen times a day and briefly paused the thermostat. The default for the Bluetooth and entity sources is now 45 minutes. If you have saved the Alert thresholds options, your saved value still applies; change it there
+
 ## [2.11.1] - 2026-10-31
 
 ### 🔧 **Fixes**

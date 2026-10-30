@@ -108,7 +108,9 @@ DEFAULT_STUCK_FERMENTATION_HOURS: Final = 48
 DEFAULT_TEMPERATURE_HIGH_THRESHOLD: Final = 30.0  # Celsius
 DEFAULT_TEMPERATURE_LOW_THRESHOLD: Final = 10.0  # Celsius
 DEFAULT_LOW_BATTERY_THRESHOLD: Final = 20  # Percentage
-DEFAULT_OFFLINE_TIMEOUT_MINUTES: Final = 15  # Direct Bluetooth / entity sources
+# A Pill in a fermenter (often inside a fridge) regularly drops Bluetooth
+# packets for 20-30 minutes, so a shorter timeout makes it flap offline.
+DEFAULT_OFFLINE_TIMEOUT_MINUTES: Final = 45  # Direct Bluetooth / entity sources
 DEFAULT_OFFLINE_TIMEOUT_MINUTES_CLOUD: Final = 120  # Pills report to the cloud (and Brew Streams) much less often
 
 # Default temperature control tuning

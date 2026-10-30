@@ -112,14 +112,47 @@ def test_unknown_version_rejected():
     assert parser.parse_advertisement(FakeServiceInfo({RAPT_MANUFACTURER_ID: packet})) is None
 
 
-def test_firmware_2_auxiliary_frame_ignored_quietly(caplog):
-    # Captured from Pill firmware 2.0.0, which sends this 24-byte frame
-    # alongside its normal v1/v2 telemetry (via Jocke1970/rapt-ble#7)
-    packet = bytes.fromhex("5054b78813bfc469f801ffffffff8000ffff010602000009")
+@pytest.mark.parametrize(
+    "packet_hex",
+    [
+        # via Jocke1970/rapt-ble#7
+        "5054b78813bfc469f801ffffffff8000ffff010602000009",
+        # Sent between readings by a floating Pill
+        "5054b7ac1518df047801ffffffff8000ffffffa902000001",
+    ],
+)
+def test_firmware_2_frame_without_readings_ignored_quietly(caplog, packet_hex):
+    # Pill firmware 2.0.0 sometimes sends this frame with gravity, tilt and
+    # temperature holding their "no value" markers
+    packet = bytes.fromhex(packet_hex)
     parser = RAPTPillBLEParser()
 
     assert parser.parse_advertisement(FakeServiceInfo({RAPT_MANUFACTURER_ID: packet})) is None
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+# Captured from a floating Pill on firmware 2.0.0 reading 1.0463 SG at 18.63 °C
+FIRMWARE_2_TELEMETRY = bytes.fromhex("5054b7ac1518df04780128df159d0747ffffffa902000001")
+
+
+def test_firmware_2_telemetry_frame_parses():
+    parser = RAPTPillBLEParser()
+    data = parser.parse_advertisement(
+        FakeServiceInfo({RAPT_MANUFACTURER_ID: FIRMWARE_2_TELEMETRY})
+    )
+
+    assert (data.gravity, data.temperature) == (pytest.approx(1.0463), pytest.approx(18.63))
+
+
+def test_firmware_2_telemetry_frame_keeps_last_battery():
+    # The new frame carries no battery level, so it must not blank the sensor
+    parser = RAPTPillBLEParser()
+    parser.parse_advertisement(FakeServiceInfo({RAPT_MANUFACTURER_ID: make_v2_packet(battery_pct=42)}))
+    data = parser.parse_advertisement(
+        FakeServiceInfo({RAPT_MANUFACTURER_ID: FIRMWARE_2_TELEMETRY})
+    )
+
+    assert data.battery == 42
 
 
 def test_identification_frame_ignored_quietly(caplog):

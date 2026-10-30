@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any
 
@@ -25,9 +25,15 @@ KEGLAND_DATA_START = [71]   # "G" - General/Version
 
 # Telemetry payload after the "PT" prefix: version byte + 20 data bytes
 TELEMETRY_PAYLOAD_LENGTH = 21
-# Firmware 2.0.0+ also sends an undocumented "PT"-prefixed frame one byte
-# longer than telemetry; it carries no readings we know how to decode.
-AUXILIARY_FRAME_LENGTH = 24
+# Firmware 2.0.0+ also sends a 24-byte "PT" frame: type 0xB7, the Pill's MAC,
+# an unknown byte, then gravity x10000, tilt x100 and temperature x100. It is
+# undocumented; the layout was matched against a Pill's own readings.
+FIRMWARE_2_FRAME_LENGTH = 24
+FIRMWARE_2_FRAME_TYPE = 0xB7
+FIRMWARE_2_STRUCT = ">B6sBHHh"  # type + MAC + unknown + gravity + tilt + temperature
+# Markers the Pill sends in place of a reading it doesn't have yet
+NO_GRAVITY = 0xFFFF
+NO_TEMPERATURE = -0x8000
 # The Pill also advertises "RAPTdPillG1" as an identification frame
 IDENTIFICATION_FRAME_PREFIX = b"PTdPill"
 V1_STRUCT = ">B6sHfhhhh"   # version + MAC + temp + gravity + accel xyz + battery
@@ -106,22 +112,28 @@ class RAPTPillBLEParser:
         if RAPT_MANUFACTURER_ID in manufacturer_data:
             data = manufacturer_data[RAPT_MANUFACTURER_ID]
             _LOGGER.debug("RAPT PARSER: RAPT data length=%d, hex=%s", len(data), data.hex())
-            if data.startswith(IDENTIFICATION_FRAME_PREFIX) or (
-                len(data) == AUXILIARY_FRAME_LENGTH and list(data[:2]) == RAPT_DATA_START
-            ):
-                _LOGGER.debug("RAPT PARSER: Ignoring non-telemetry frame: %s", data.hex())
+            parsed_data = None
+            if data.startswith(IDENTIFICATION_FRAME_PREFIX):
+                _LOGGER.debug("RAPT PARSER: Ignoring identification frame: %s", data.hex())
+            elif len(data) == FIRMWARE_2_FRAME_LENGTH and list(data[:2]) == RAPT_DATA_START:
+                parsed_data = self._parse_firmware_2_frame(data[2:])
+                if parsed_data is None:
+                    _LOGGER.debug("RAPT PARSER: Ignoring firmware 2.0 frame without readings: %s",
+                                  data.hex())
             elif len(data) >= 2 and list(data[:2]) == RAPT_DATA_START:
                 parsed_data = self._parse_telemetry(data)
-                if parsed_data:
-                    parsed_data.firmware_version = self._firmware_version
-                    self.last_data = parsed_data
-                    self.last_telemetry_at = dt_util.utcnow()
-                    _LOGGER.debug("RAPT PARSER: Successfully parsed data: temp=%.2f, gravity=%.4f",
-                                  parsed_data.temperature or 0, parsed_data.gravity or 0)
-                    return parsed_data
-                _LOGGER.warning("RAPT PARSER: Failed to parse telemetry data: %s", data.hex())
+                if parsed_data is None:
+                    _LOGGER.warning("RAPT PARSER: Failed to parse telemetry data: %s", data.hex())
             else:
                 _LOGGER.debug("RAPT PARSER: Data doesn't start with PT prefix: %s", data[:2].hex())
+
+            if parsed_data:
+                parsed_data.firmware_version = self._firmware_version
+                self.last_data = parsed_data
+                self.last_telemetry_at = dt_util.utcnow()
+                _LOGGER.debug("RAPT PARSER: Successfully parsed data: temp=%.2f, gravity=%.4f",
+                              parsed_data.temperature or 0, parsed_data.gravity or 0)
+                return parsed_data
 
         return None
 
@@ -144,6 +156,29 @@ class RAPTPillBLEParser:
         except Exception as e:
             _LOGGER.error("Error parsing RAPT telemetry: %s", e)
             return None
+
+    def _parse_firmware_2_frame(self, payload: bytes) -> RAPTPillSensorData | None:
+        """Parse the firmware 2.0 frame, or None when it holds no readings."""
+        frame_type, mac_bytes, _unknown, gravity_raw, _tilt_raw, temp_raw = struct.unpack(
+            FIRMWARE_2_STRUCT, payload[:struct.calcsize(FIRMWARE_2_STRUCT)]
+        )
+        if (
+            frame_type != FIRMWARE_2_FRAME_TYPE
+            or gravity_raw == NO_GRAVITY
+            or temp_raw == NO_TEMPERATURE
+        ):
+            return None
+
+        readings = {
+            "gravity": gravity_raw / 10000.0,
+            "temperature": temp_raw / 100.0,
+            "mac_address": ":".join(f"{b:02x}" for b in mac_bytes),
+        }
+        # This frame has no battery, velocity or accelerometer; keep the last
+        # v1/v2 frame's so those sensors don't blank out every other reading.
+        if self.last_data:
+            return replace(self.last_data, **readings)
+        return RAPTPillSensorData(**readings)
 
     def _parse_v1_format(self, payload: bytes) -> RAPTPillSensorData | None:
         """Parse v1 format: 0x01 mm mm mm mm mm mm tt tt gg gg gg gg xx xx yy yy zz zz bb bb"""
