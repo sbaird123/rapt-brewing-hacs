@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2026-10-31
+
+### 🌡️ **Fermentation Control**
+- **No heating on stale readings after a restart**: the Pill used to count as online for a full offline timeout after Home Assistant started, so the thermostat could act on the last saved temperature for up to two hours (webhook and cloud sources) with no new reading. Freshness is now measured from the last stored reading
+- **The stale-data failsafe now works with the entity source**: every poll re-read the source entities' current values as a new reading, so a frozen sensor kept the Pill online forever and added a duplicate data point every minute. Readings are now ingested only when the source entities report again
+- **The thermostat controls the running brew**: browsing an older session no longer pauses control, and setting the temperature on the thermostat card no longer changes the old session's target
+- **Stop Current Session stops the running brew**: while browsing an older session, the button and the `stop_session` service used to "stop" that old session again (rewriting its end time) and leave the running brew, and its heater, going
+- **New brews keep the previous target temperature** when none is given, so the thermostat has something to hold instead of sitting idle with `no target temperature`
+
+### 📊 **Calculations** (these change the numbers on your dashboards)
+- **Temperature correction had the wrong sign**: warm readings were lowered and cold readings raised, the opposite of what the README described. It now uses the standard hydrometer correction, so a cold crash no longer drags ABV and attenuation down
+- **Continuous ABV formula**: the old fudge factor jumped at OG 1.050 and 1.060, so a 1.0601 brew read about 3% higher than a 1.0599 one
+- **Better default target gravity**: OG minus 0.025 made "Fermentation complete" fire partway through strong beers (a 1.080 brew got a 1.055 target). It is now 75% apparent attenuation (1.020 for that brew). Sessions that already have a target keep it
+- **Gravity Velocity is labelled `points/day`**, which is what the Pill reports; it was labelled `SG/day`. Home Assistant may ask you to confirm the unit change for its long-term statistics
+- **Fermentation Rate trend attribute**: its ±0.001 SG/hr threshold (24 points per day) meant it almost always said "stable". It now uses 1 point per day
+
+### 🔧 **Fixes**
+- **No stuck-fermentation alert after a finished brew**: gravity stops changing at final gravity, which used to trigger "stuck" 48 hours later
+- **Sessions started in the same second no longer overwrite each other**
+
 ## [2.10.2] - 2026-10-31
 
 ### 🌡️ **Fermentation Control**

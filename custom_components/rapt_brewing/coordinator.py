@@ -68,6 +68,7 @@ from .const import (
     BATTERY_MAX,
 )
 from .data import RAPTBrewingData, BrewingSession, DataPoint, Alert, downsample_data_points
+from .util import abv, default_target_gravity, temperature_corrected_gravity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -188,6 +189,14 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
     def gravity_unit(self) -> str:
         """Configured gravity display unit (sg or plato)."""
         return self._opt(CONF_GRAVITY_UNIT, GRAVITY_UNIT_SG)
+
+    @property
+    def active_session(self) -> BrewingSession | None:
+        """The running brew, which may not be the session being viewed."""
+        return next(
+            (s for s in self.data.sessions.values() if s.state == SESSION_STATE_ACTIVE),
+            None,
+        )
 
     @property
     def is_online(self) -> bool:
@@ -430,7 +439,26 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         try:
             if self.source_type == SOURCE_TYPE_ENTITY:
                 self._refresh_from_entities()
-                has_new_data = self._current_ble_data is not None
+                # A frozen source entity keeps its value but stops reporting;
+                # only ingest readings reported since the last update.
+                reported_at = max(
+                    (
+                        state.last_reported
+                        for entity_id in (
+                            self.entry.data.get(CONF_GRAVITY_ENTITY),
+                            self.entry.data.get(CONF_TEMPERATURE_ENTITY),
+                        )
+                        if entity_id and (state := self.hass.states.get(entity_id))
+                    ),
+                    default=None,
+                )
+                has_new_data = (
+                    self._current_ble_data is not None
+                    and reported_at is not None
+                    and reported_at != self._last_ingested_at
+                )
+                if has_new_data:
+                    self._last_ingested_at = reported_at
             elif self.source_type == SOURCE_TYPE_CLOUD:
                 has_new_data = await self._refresh_from_cloud()
             elif self.source_type == SOURCE_TYPE_WEBHOOK:
@@ -549,10 +577,8 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                 _LOGGER.info("RAPT AUTO-SET: Original gravity set to %.3f (temp corrected from %.3f) for session: %s",
                              session.original_gravity, gravity, session.name)
 
-                # Also set a reasonable default target gravity if not set
-                # Typical beer fermentation: OG - 0.020 to 0.030 points
                 if session.target_gravity is None:
-                    session.target_gravity = max(0.990, gravity - 0.025)
+                    session.target_gravity = default_target_gravity(session.original_gravity)
                     _LOGGER.info("RAPT AUTO-SET: Target gravity set to %.3f for session: %s",
                                  session.target_gravity, session.name)
 
@@ -573,30 +599,11 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         # Get temperature-corrected gravity for more accurate calculations
         corrected_gravity = self._get_temperature_corrected_gravity(session)
 
-        # Calculate alcohol percentage using temperature-corrected gravity with improved accuracy
+        # Calculate alcohol percentage using temperature-corrected gravity
         if session.original_gravity and corrected_gravity:
-            # Validate gravity values are reasonable
-            if corrected_gravity >= session.original_gravity:
-                session.alcohol_percentage = 0.0  # Fermentation hasn't started
-                _LOGGER.debug("RAPT CALC: Alcohol 0.0%% - fermentation not started (CG >= OG)")
-            else:
-                gravity_drop = session.original_gravity - corrected_gravity
-
-                # Apply correction factor based on original gravity for better accuracy
-                if session.original_gravity > 1.060:
-                    correction_factor = 1.05  # High gravity beers
-                elif session.original_gravity > 1.050:
-                    correction_factor = 1.02  # Medium gravity beers
-                else:
-                    correction_factor = 1.0   # Low gravity beers
-
-                session.alcohol_percentage = gravity_drop * 131.25 * correction_factor
-
-                # Cap at reasonable maximum (20% ABV)
-                session.alcohol_percentage = min(session.alcohol_percentage, 20.0)
-
-                _LOGGER.debug("RAPT CALC: Alcohol %.1f%% (OG=%.3f, CG_corrected=%.3f, factor=%.2f)",
-                             session.alcohol_percentage, session.original_gravity, corrected_gravity, correction_factor)
+            session.alcohol_percentage = abv(session.original_gravity, corrected_gravity)
+            _LOGGER.debug("RAPT CALC: Alcohol %.1f%% (OG=%.3f, CG_corrected=%.3f)",
+                          session.alcohol_percentage, session.original_gravity, corrected_gravity)
         else:
             _LOGGER.debug("RAPT CALC: Cannot calculate alcohol - OG=%s, CG_corrected=%s",
                           session.original_gravity, corrected_gravity)
@@ -662,22 +669,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         """Apply temperature correction to a gravity reading."""
         if gravity is None or temperature is None:
             return None
-
-        # Temperature correction formula - remove temperature effects to show actual density
-        calibration_temp = 20.0  # °C (reference temperature)
-        temp_correction_factor = 0.00013  # per °C (scientific literature)
-
-        temp_difference = temperature - calibration_temp
-        thermal_effect = temp_difference * temp_correction_factor
-
-        # Safety check: prevent ridiculous temperature corrections
-        if abs(thermal_effect) > 0.020:  # Max 20 points correction
-            _LOGGER.warning("RAPT TEMP CORRECTION: Extreme correction detected! Raw=%.4f, Temp=%.2f°C, Correction=%.4f - using raw gravity",
-                            gravity, temperature, thermal_effect)
-            return gravity
-
-        # Remove thermal expansion/contraction effects to get true density
-        return gravity - thermal_effect
+        return temperature_corrected_gravity(gravity, temperature)
 
     # ------------------------------------------------------------------
     # Alerts
@@ -691,8 +683,12 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
         # from the session can't trigger alerts either.
         _gravity, temperature, battery = self._calibrated_readings(ble_data)
 
-        # Check for stuck fermentation using scientifically accurate threshold
-        if (session.fermentation_rate is not None
+        # Check for stuck fermentation; a finished brew stops changing too
+        fermentation_complete = any(
+            alert.type == ALERT_TYPE_FERMENTATION_COMPLETE for alert in session.alerts
+        )
+        if (not fermentation_complete
+                and session.fermentation_rate is not None
                 and abs(session.fermentation_rate) < FERMENTATION_RATE_STUCK
                 and session.current_gravity is not None
                 and session.data_points):
@@ -858,13 +854,29 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
                           target_gravity: float | None = None,
                           target_temperature: float | None = None) -> str:
         """Start a new brewing session, stopping any currently active ones."""
+        if target_temperature is None:
+            # Keep the thermostat holding the last brew's temperature
+            target_temperature = next(
+                (
+                    s.target_temperature
+                    for s in sorted(
+                        self.data.sessions.values(),
+                        key=lambda s: s.started_at.timestamp() if s.started_at else 0.0,
+                        reverse=True,
+                    )
+                    if s.target_temperature is not None
+                ),
+                None,
+            )
+
         for existing in self.data.sessions.values():
             if existing.state == SESSION_STATE_ACTIVE:
                 existing.state = SESSION_STATE_IDLE
                 existing.completed_at = dt_util.now()
                 _LOGGER.info("RAPT SESSION: Auto-stopped session: %s", existing.name)
 
-        session_id = f"session_{dt_util.now().strftime('%Y%m%d_%H%M%S')}"
+        # Microseconds keep two starts in the same second (automations) apart
+        session_id = f"session_{dt_util.now().strftime('%Y%m%d_%H%M%S_%f')}"
 
         session = BrewingSession(
             id=session_id,
@@ -912,7 +924,7 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
     async def stop_session(self, session_id: str) -> None:
         """Stop a brewing session."""
         session = self.data.get_session(session_id)
-        if session:
+        if session and session.state == SESSION_STATE_ACTIVE:
             session.state = SESSION_STATE_IDLE
             session.completed_at = dt_util.now()
 
@@ -997,6 +1009,13 @@ class RAPTBrewingCoordinator(DataUpdateCoordinator[RAPTBrewingData]):
 
             # Load settings
             self.data.settings = stored_data.get("settings", {})
+
+            # A restart is not a fresh reading: a Pill that died before it
+            # must not look online, or the thermostat would act on stale data.
+            self.last_data_received = max(
+                (s.data_points[-1].timestamp for s in self.data.sessions.values() if s.data_points),
+                default=None,
+            )
 
     async def async_config_entry_first_refresh(self) -> None:
         """Perform first refresh."""

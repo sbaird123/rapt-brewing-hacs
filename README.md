@@ -92,19 +92,19 @@ The dashboard shows:
 
 ## Temperature Correction
 
-The integration uses scientifically accurate temperature correction based on research literature:
+Gravity is corrected to what it would read at 20 °C using the standard
+hydrometer correction (the water-density polynomial used by brewing
+calculators). ABV and attenuation use the corrected gravity.
 
-### Features
-- **Scientific Accuracy**: Uses 0.00013 per °C coefficient from CRC Handbook of Chemistry and Physics
-- **True Density Calculation**: Removes thermal expansion/contraction effects to show actual liquid density
-- **Brewing-Focused**: Perfect for accurate ABV calculations and fermentation tracking
-- **Realistic Corrections**: Small, accurate adjustments (typically ±0.002 SG for normal temperature variations)
+- **Cold liquid contracts** → reads HIGH → the correction lowers it (about
+  2 points at a 2 °C cold crash)
+- **Warm liquid expands** → reads LOW → the correction raises it (about
+  2.5 points at 30 °C)
 
-### How It Works
-- **Cold liquid contracts** → reads artificially HIGH → correction removes thermal contraction effect
-- **Warm liquid expands** → reads artificially LOW → correction removes thermal expansion effect
-- **Formula**: `True_Density = Raw_Gravity - (Temperature - 20°C) × 0.00013`
-- **Result**: Temperature-corrected gravity shows actual fermentation state, not thermal artifacts
+ABV uses the continuous "alternative" formula,
+`76.08 × (OG − CG) / (1.775 − OG) × CG / 0.794`, which stays accurate for
+stronger beers. When no target gravity is set, the first reading sets the
+original gravity and a target at 75% apparent attenuation.
 
 ## Temperature Control
 
@@ -176,6 +176,11 @@ it to `off` (or pick a different mode) on the card at any time; your choice
 lasts until the next session starts or stops and survives a restart, and the
 outputs are re-read at startup and brought back in line on the first tick.
 
+The thermostat always controls the running brew, even while you browse an
+older session with the session selector, and **Stop Current Session** stops
+the running brew too. A new session without a target temperature keeps the
+previous brew's, so the thermostat carries on holding it.
+
 > **Not using this integration's thermostat?** Home Assistant's built-in
 > `generic_thermostat` can drive a switch from any of the temperature sensors
 > here. It has no session awareness, no offline failsafe and no PWM heating,
@@ -185,7 +190,7 @@ outputs are re-read at startup and brought back in line on the first tick.
 
 ### Alert Types
 All thresholds are configurable under **Configure → Alert thresholds** (defaults shown):
-- **Stuck Fermentation**: No gravity change for 48+ hours (once per session)
+- **Stuck Fermentation**: No gravity change for 48+ hours (once per session; not after fermentation is complete)
 - **Temperature High**: Above 30°C (86°F) during fermentation (once per hour)
 - **Temperature Low**: Below 10°C (50°F) during early/mid fermentation only (cold crash at 70%+ attenuation is expected)
 - **Fermentation Complete**: Target gravity reached (once per session)

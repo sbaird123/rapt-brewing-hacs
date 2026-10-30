@@ -104,14 +104,14 @@ class RAPTBrewingButton(RAPTBrewingEntity, ButtonEntity):
         await self.coordinator.async_request_refresh()
 
     async def _stop_session(self) -> None:
-        """Stop the current brewing session."""
-        session = self.coordinator.data.current_session
+        """Stop the running brew, even while browsing an older session."""
+        session = self.coordinator.active_session
         if session:
             await self.coordinator.stop_session(session.id)
             _LOGGER.info("RAPT BUTTON: Stopped session: %s (%s)", session.name, session.id)
             await self.coordinator.async_request_refresh()
         else:
-            _LOGGER.info("RAPT BUTTON: Cannot stop session, no current session")
+            _LOGGER.info("RAPT BUTTON: Cannot stop session, no active session")
 
     async def _delete_session(self) -> None:
         """Delete the current brewing session."""

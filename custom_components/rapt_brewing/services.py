@@ -98,9 +98,9 @@ def async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_stop_session(call: ServiceCall) -> None:
         coordinator = _resolve_coordinator(hass, call)
-        session = coordinator.data.current_session
+        session = coordinator.active_session
         if not session:
-            raise ServiceValidationError("No current brewing session to stop")
+            raise ServiceValidationError("No active brewing session to stop")
         await coordinator.stop_session(session.id)
         _LOGGER.info("RAPT SERVICE: Stopped session %s", session.id)
         await coordinator.async_request_refresh()

@@ -37,7 +37,6 @@ from .const import (
     CONF_COOLER_SWITCH,
     CONF_HEATER_SWITCH,
     CONTROL_TICK_SECONDS,
-    SESSION_STATE_ACTIVE,
 )
 from .control import (
     MODE_COOL,
@@ -129,17 +128,6 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
             return HVACMode.COOL
         return HVACMode.HEAT
 
-    def _find_active_session_id(self) -> str | None:
-        """Return the running brew, whichever session is being viewed."""
-        return next(
-            (
-                session.id
-                for session in self.coordinator.data.sessions.values()
-                if session.state == SESSION_STATE_ACTIVE
-            ),
-            None,
-        )
-
     @property
     def hvac_modes(self) -> list[HVACMode]:
         """Modes available given which outputs are configured."""
@@ -155,13 +143,13 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
     @property
     def current_temperature(self) -> float | None:
         """Wort temperature from the RAPT Pill."""
-        session = self.coordinator.data.current_session
+        session = self.coordinator.active_session
         return session.current_temperature if session else None
 
     @property
     def target_temperature(self) -> float | None:
-        """Setpoint, shared with the Target Temperature number entity."""
-        session = self.coordinator.data.current_session
+        """Setpoint of the running brew, whichever session is being viewed."""
+        session = self.coordinator.active_session
         return session.target_temperature if session else None
 
     @property
@@ -200,7 +188,8 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
 
         # A restart is not a new brew: keep the mode chosen during this one,
         # including a deliberate `off`.
-        self._active_session_id = self._find_active_session_id()
+        session = self.coordinator.active_session
+        self._active_session_id = session.id if session else None
         last_state = await self.async_get_last_state()
         if last_state and last_state.state in self.hvac_modes:
             self._attr_hvac_mode = HVACMode(last_state.state)
@@ -252,7 +241,8 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
         """Evaluate the control law; callers must hold the control lock."""
         # Starting a brew switches control on and stopping it switches it off,
         # however the session was started or stopped.
-        active_session_id = self._find_active_session_id()
+        session = self.coordinator.active_session
+        active_session_id = session.id if session else None
         if active_session_id != self._active_session_id:
             self._active_session_id = active_session_id
             self._attr_hvac_mode = (
@@ -265,11 +255,10 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
             )
 
         mode = HVAC_TO_MODE.get(self._attr_hvac_mode, MODE_OFF)
-        session = self.coordinator.data.current_session
 
         hold_off_reason: str | None = None
         if mode != MODE_OFF:
-            if session is None or session.state != SESSION_STATE_ACTIVE:
+            if session is None:
                 hold_off_reason = "no active session"
             elif not self.coordinator.is_online:
                 hold_off_reason = "sensor data stale"
@@ -351,9 +340,9 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
         if temperature is None:
             return
 
-        session = self.coordinator.data.current_session
+        session = self.coordinator.active_session
         if session is None:
-            _LOGGER.warning("RAPT CLIMATE: Cannot set target temperature, no current session")
+            _LOGGER.warning("RAPT CLIMATE: Cannot set target temperature, no active session")
             return
 
         session.target_temperature = float(temperature)

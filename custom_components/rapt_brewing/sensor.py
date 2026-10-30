@@ -19,7 +19,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import GRAVITY_UNIT_PLATO
+from .const import FERMENTATION_RATE_STUCK, GRAVITY_UNIT_PLATO
 from .entity import RAPTBrewingEntity
 from .util import sg_to_plato
 
@@ -163,7 +163,7 @@ SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
         key="gravity_velocity",
         name="Gravity Velocity",
         icon="mdi:speedometer",
-        native_unit_of_measurement="SG/day",
+        native_unit_of_measurement="points/day",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
@@ -421,9 +421,14 @@ class RAPTBrewingSensor(RAPTBrewingEntity, SensorEntity):
                 })
             elif self.entity_description.key == "fermentation_rate":
                 if session.fermentation_rate is not None:
+                    rate = session.fermentation_rate
                     attrs.update({
-                        "trend": "decreasing" if session.fermentation_rate < -0.001 else "stable" if abs(session.fermentation_rate) <= 0.001 else "increasing",
-                        "rate_per_day": round(session.fermentation_rate * 24, 4) if session.fermentation_rate else None,
+                        "trend": (
+                            "decreasing" if rate < -FERMENTATION_RATE_STUCK
+                            else "increasing" if rate > FERMENTATION_RATE_STUCK
+                            else "stable"
+                        ),
+                        "rate_per_day": round(rate * 24, 4),
                     })
             elif self.entity_description.key == "active_alerts":
                 attrs.update({
