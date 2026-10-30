@@ -112,6 +112,7 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
         self._cooler_entity_id = cooler_entity_id
         self._controller = FermentationController(config_from_options(dict(entry.options)))
         self._attr_hvac_mode = self._default_hvac_mode()
+        self._active_session_id: str | None = None
         # The timer tick and coordinator updates can land together; the
         # control law must not be evaluated twice at once.
         self._control_lock = asyncio.Lock()
@@ -127,6 +128,17 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
         if self._cooler_entity_id:
             return HVACMode.COOL
         return HVACMode.HEAT
+
+    def _find_active_session_id(self) -> str | None:
+        """Return the running brew, whichever session is being viewed."""
+        return next(
+            (
+                session.id
+                for session in self.coordinator.data.sessions.values()
+                if session.state == SESSION_STATE_ACTIVE
+            ),
+            None,
+        )
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
@@ -186,7 +198,9 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
         """Restore the mode and start the control loop."""
         await super().async_added_to_hass()
 
-        # A previously chosen mode wins - including a deliberate `off`.
+        # A restart is not a new brew: keep the mode chosen during this one,
+        # including a deliberate `off`.
+        self._active_session_id = self._find_active_session_id()
         last_state = await self.async_get_last_state()
         if last_state and last_state.state in self.hvac_modes:
             self._attr_hvac_mode = HVACMode(last_state.state)
@@ -236,6 +250,20 @@ class RAPTFermentationThermostat(RAPTBrewingEntity, ClimateEntity, RestoreEntity
 
     async def _async_control_locked(self) -> None:
         """Evaluate the control law; callers must hold the control lock."""
+        # Starting a brew switches control on and stopping it switches it off,
+        # however the session was started or stopped.
+        active_session_id = self._find_active_session_id()
+        if active_session_id != self._active_session_id:
+            self._active_session_id = active_session_id
+            self._attr_hvac_mode = (
+                self._default_hvac_mode() if active_session_id else HVACMode.OFF
+            )
+            _LOGGER.info(
+                "RAPT CLIMATE: Session %s, mode set to %s",
+                "started" if active_session_id else "stopped",
+                self._attr_hvac_mode,
+            )
+
         mode = HVAC_TO_MODE.get(self._attr_hvac_mode, MODE_OFF)
         session = self.coordinator.data.current_session
 

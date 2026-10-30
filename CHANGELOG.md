@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.2] - 2026-10-31
+
+### 🌡️ **Fermentation Control**
+- **The thermostat follows your brew**: starting a session switches it on in the mode its outputs imply (`heat`, `cool` or `heat_cool`) and stopping the session switches it `off`. This works however the session is started or stopped: the buttons, the services or an automation. A mode you pick mid-brew, including `off`, lasts until the next session starts or stops and survives a restart
+- **Fixes the thermostat staying `off` after updating from 2.9.0**: 2.9.0 saved its old default of `off`, which was then restored as if you had chosen it. Starting your next session switches it on; for a brew already running, set the mode once on the card
+
 ## [2.10.1] - 2026-10-30
 
 ### 🔧 **Fixes**
