@@ -87,3 +87,26 @@ def test_downsample_noop_for_recent_only():
         for i in range(60, 0, -1)
     ]
     assert downsample_data_points(points, now) == points
+
+
+def test_legacy_naive_timestamps_load_timezone_aware():
+    # Early versions stored naive local timestamps; mixing them with aware
+    # ones made comparisons crash setup.
+    session = BrewingSession.from_dict({
+        "id": "s",
+        "name": "Old brew",
+        "started_at": "2025-01-01T12:00:00",
+        "completed_at": "2025-01-08T12:00:00",
+        "data_points": [{"timestamp": "2025-01-02T12:00:00"}],
+        "alerts": [{"type": "low_battery", "message": "x", "timestamp": "2025-01-03T12:00:00"}],
+    })
+
+    assert all(
+        moment.tzinfo is not None
+        for moment in (
+            session.started_at,
+            session.completed_at,
+            session.data_points[0].timestamp,
+            session.alerts[0].timestamp,
+        )
+    )

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-10-31
+
+### 🔧 **Fixes**
+- **2.11.0 failed to load for long-time users**: sessions saved by early versions have timestamps without a timezone, and the new freshness check crashed comparing them with newer readings (`can't compare offset-naive and offset-aware datetimes`). Stored timestamps without a timezone are now read as local time
+
 ## [2.11.0] - 2026-10-31
 
 ### 🌡️ **Fermentation Control**

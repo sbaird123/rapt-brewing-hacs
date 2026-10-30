@@ -44,6 +44,13 @@ def downsample_data_points(
     return thinned + recent
 
 
+
+def _parse_datetime(value: str) -> datetime:
+    """Parse a stored timestamp, treating legacy naive values as local time."""
+    parsed = datetime.fromisoformat(value)
+    return parsed if parsed.tzinfo else parsed.astimezone()
+
+
 @dataclass
 class BrewingSession:
     """Represent a brewing session."""
@@ -110,8 +117,8 @@ class BrewingSession:
             fermentation_rate=data.get("fermentation_rate"),
             state=data.get("state", SESSION_STATE_IDLE),
             stage=data.get("stage", FERMENTATION_STAGE_PRIMARY),
-            started_at=datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None,
-            completed_at=datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None,
+            started_at=_parse_datetime(data["started_at"]) if data.get("started_at") else None,
+            completed_at=_parse_datetime(data["completed_at"]) if data.get("completed_at") else None,
             notes=data.get("notes"),
             data_points=[DataPoint.from_dict(dp) for dp in data.get("data_points", [])],
             alerts=[Alert.from_dict(alert) for alert in data.get("alerts", [])],
@@ -151,7 +158,7 @@ class DataPoint:
     def from_dict(cls, data: dict[str, Any]) -> DataPoint:
         """Create from dictionary."""
         return cls(
-            timestamp=datetime.fromisoformat(data["timestamp"]),
+            timestamp=_parse_datetime(data["timestamp"]),
             gravity=data.get("gravity"),
             temperature=data.get("temperature"),
             battery_level=data.get("battery_level"),
@@ -187,7 +194,7 @@ class Alert:
         return cls(
             type=data["type"],
             message=data["message"],
-            timestamp=datetime.fromisoformat(data["timestamp"]),
+            timestamp=_parse_datetime(data["timestamp"]),
             acknowledged=data.get("acknowledged", False),
         )
 
